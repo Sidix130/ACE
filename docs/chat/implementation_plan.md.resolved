@@ -1,0 +1,82 @@
+# Plan de Refactorisation Architecturale : ACE (Adaptive Chat Extractor)
+
+Ce plan décrit la migration du script monolithique [clean.py](file:///home/sidix/projet/geopolitique/clean.py) vers une architecture logicielle modulaire, extensible et robuste, baptisée **ACE**.
+
+## Objectifs de l'Architecture
+1. **Séparation des préoccupations** : Isoler la logique de détection topologique du rendu Markdown.
+2. **Extensibilité** : Permettre d'ajouter des "Processeurs" de contenu (ex: support d'autres types de diagrammes) sans modifier le cœur.
+3. **Testabilité** : Isoler les fonctions de scoring pour des tests unitaires sur divers échantillons HTML.
+
+## Structure de fichiers cible
+
+```
+ace/
+├── __init__.py
+├── main.py              # Point d'entrée CLI
+├── engine/
+│   ├── detector.py      # Détection topologique des tours (Scoring)
+│   ├── inferencer.py    # Inférence des rôles (Vote multi-signal)
+│   └── converter.py     # Traversal DOM et Dispatcher
+├── processors/
+│   ├── cleaner.py       # Nettoyage UI (Regex & DOM)
+│   ├── math.py          # Gestionnaire KaTeX/MathJax
+│   ├── diagrams.py      # Gestionnaire Mermaid/SVG
+│   └── formats.py       # Gestionnaires standards (Tables, Listes)
+├── models/
+│   └── chat.py          # DataClasses (Turn, Session)
+└── utils/
+    ├── regex.py         # Librairie de patterns centraux
+    └── dom.py           # Helpers BeautifulSoup
+```
+
+## Changements Majeurs
+
+### 1. Pattern Dispatcher pour la Conversion
+Remplacer la longue suite de `if name == ...` par un dictionnaire de handlers enregistrés.
+```python
+HANDLERS = {
+    'p': handle_paragraph,
+    'table': handle_table,
+    'div': handle_container,
+    # ...
+}
+```
+
+### 2. Pipeline de Traitement (Middleware)
+Le texte extrait subira une suite de filtres de post-traitement configurables.
+```python
+PIPELINE = [
+    fix_latex_delimiters,
+    wrap_mermaid_blocks,
+    strip_ui_labels,
+    normalize_spacing
+]
+```
+
+### 3. Modèle de Données Typé
+Utilisation de `dataclasses` pour garantir la structure des données extraites avant l'écriture finale.
+
+## Plan de migration
+
+### Étape 1 : Fondations et Utilitaires [NEW]
+- Créer l'arborescence.
+- Isoler les regex globales dans `utils/regex.py`.
+
+### Étape 2 : Cœur de l'Engine [MODIFY]
+- Déplacer et nettoyer [detect_turn_blocks](file:///home/sidix/projet/geopolitique/clean.py#97-155) dans `engine/detector.py`.
+- Déplacer [infer_role](file:///home/sidix/projet/geopolitique/clean.py#168-214) dans `engine/inferencer.py`.
+
+### Étape 3 : Système de Conversion [NEW]
+- Implémenter le `Dispatcher` dans `engine/converter.py`.
+- Créer les processeurs modulaires dans `processors/`.
+
+### Étape 4 : Point d'Entrée [NEW]
+- Réécrire `main.py` pour orchestrer les différents modules.
+
+## Plan de vérification
+
+### Tests Automatisés
+- Recréer les sorties pour les 4 fichiers tests (AI Studio, ChatGPT, DeepSeek, Grok) et comparer bit-à-bit (modulo les métadonnées).
+
+### Vérification de Qualité
+- Vérifier que [extract_code_blocks](file:///home/sidix/projet/geopolitique/clean.py#220-255) ne mélange pas les IDs lors du traitement multi-tours.
