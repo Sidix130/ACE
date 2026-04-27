@@ -1,0 +1,1587 @@
+## User
+
+> **Rôle** : Auditeur Forensique Code-First (niveau expert).
+>
+> **Périmètre** : examen exclusif du code source dans `@ace` et `tests/`. Lecture de la documentation strictement interdite, sauf si elle est nécessaire pour résoudre un symbole ou une référence explicitement appelée par le code.
+>
+> **Objectif d’analyse** : produire un audit strict, sourcé et critique du système à partir du seul code.
+>
+> **1. Intentions déduites**
+> Déduis ce que le système tente réellement de faire à partir de l’arborescence, des modèles de données, des signatures de fonctions, des invariants codés, des chemins d’exécution et des cas de tests.
+>
+> **2. Frontière validée vs supposée**
+> Sépare strictement :
+>
+> * ce qui est prouvé par les tests,
+> * ce qui est seulement implémenté,
+> * ce qui est supposé fonctionner sans preuve,
+> * ce qui est contredit, fragile ou non démontré.
+>   Évalue aussi la robustesse des tests : couvrent-ils la réalité complexe ou seulement des cas synthétiques simples ?
+>
+> **3. Delta intention / capacité**
+> Identifie les flux d’exécution qui créent des blocages systémiques : impasses architecturales, faux positifs structurels, fallbacks abusifs, pertes silencieuses de données, ou tout autre écart entre l’intention du code et sa capacité réelle.
+>
+> **Contraintes épistémiques**
+>
+> * **Preuve ou silence** : chaque affirmation technique doit être appuyée par une citation stricte au format `[fichier.py:L12-15] (IC: X/10)`.
+> * Préfixe chaque conclusion majeure par **[Fait Observé]**, **[Inférence Logique]**, ou **[Hypothèse Rejetée]**.
+> * Toute intention apparente mais non prouvée doit être notée : **“Non démontré dans le périmètre analysé”**.
+> * Aucune généralisation, aucune supposition, aucune conclusion non sourcée.
+>
+> **Livrable attendu** : rapport analytique brut, direct et sans complaisance, structuré en :
+>
+> 1. Résumé exécutif
+> 2. Intentions déduites
+> 3. Frontière validée vs supposée
+> 4. Delta intention / capacité
+> 5. Recommandations priorisées : P0 critique, P1 majeur, P2 secondaire
+
+La seule chose que je changerais encore dans ta version, c’est de remplacer **“hallucinée”** par **“supposée”** ou **“non démontrée”**. C’est plus précis et plus stable pour un audit technique.
+
+## Assistant
+
+Je vais commencer par explorer la structure du projet pour comprendre l'arborescence avant de lancer l'audit approfondi.
+
+**Tool Call: List the `ACE->OCR` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/.pytest_cache
+ACE->OCR/.venv
+ACE->OCR/ace
+ACE->OCR/ace.egg-info
+ACE->OCR/debug
+ACE->OCR/dist
+ACE->OCR/docs
+ACE->OCR/input
+ACE->OCR/legacy
+ACE->OCR/output
+ACE->OCR/reports
+ACE->OCR/scripts
+ACE->OCR/temp
+ACE->OCR/tests
+ACE->OCR/venv
+
+# Files:
+ACE->OCR/.gitignore
+ACE->OCR/LICENSE
+ACE->OCR/Makefile
+ACE->OCR/README.md
+ACE->OCR/grg.md
+ACE->OCR/pyproject.toml
+ACE->OCR/repomix-auditeur-expert.xml
+ACE->OCR/repomix-output-opti.xml
+ACE->OCR/repomix-output.xml
+ACE->OCR/repomix.config.json
+ACE->OCR/repomix_auditeur_expert.json
+ACE->OCR/uv.lock
+
+
+**Tool Call: List the `ACE->OCR/ace` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/__pycache__
+ACE->OCR/ace/core
+ACE->OCR/ace/engine
+ACE->OCR/ace/models
+ACE->OCR/ace/processors
+ACE->OCR/ace/utils
+
+# Files:
+ACE->OCR/ace/__init__.py
+ACE->OCR/ace/cli.py
+ACE->OCR/ace/main.py
+
+
+**Tool Call: List the `ACE->OCR/tests` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/tests/__pycache__
+ACE->OCR/tests/fixtures
+ACE->OCR/tests/integration
+ACE->OCR/tests/unit
+
+# Files:
+ACE->OCR/tests/__init__.py
+ACE->OCR/tests/conftest.py
+
+
+**Tool Call: List the `ACE->OCR/ace/core` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/core/__pycache__
+
+# Files:
+ACE->OCR/ace/core/__init__.py
+ACE->OCR/ace/core/sanctuary.py
+
+
+**Tool Call: List the `ACE->OCR/ace/engine` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/engine/__pycache__
+
+# Files:
+ACE->OCR/ace/engine/__init__.py
+ACE->OCR/ace/engine/converter.py
+ACE->OCR/ace/engine/detector.py
+ACE->OCR/ace/engine/heuristic.py
+ACE->OCR/ace/engine/inferencer.py
+ACE->OCR/ace/engine/validator.py
+
+
+**Tool Call: List the `ACE->OCR/ace/models` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/models/__pycache__
+
+# Files:
+ACE->OCR/ace/models/__init__.py
+ACE->OCR/ace/models/chat.py
+
+
+**Tool Call: List the `ACE->OCR/ace/processors` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/processors/__pycache__
+
+# Files:
+ACE->OCR/ace/processors/tables.py
+
+
+**Tool Call: List the `ACE->OCR/ace/utils` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/ace/utils/__pycache__
+
+# Files:
+ACE->OCR/ace/utils/__init__.py
+ACE->OCR/ace/utils/dom.py
+ACE->OCR/ace/utils/regex.py
+
+
+**Tool Call: List the `ACE->OCR/tests/unit` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/tests/unit/__pycache__
+
+# Files:
+ACE->OCR/tests/unit/__init__.py
+ACE->OCR/tests/unit/test_converter.py
+ACE->OCR/tests/unit/test_detector.py
+ACE->OCR/tests/unit/test_inferencer.py
+ACE->OCR/tests/unit/test_regex.py
+ACE->OCR/tests/unit/test_sanctuary_a.py
+ACE->OCR/tests/unit/test_sanctuary_b.py
+
+
+**Tool Call: List the `ACE->OCR/tests/integration` directory's contents**
+Status: Completed
+
+# Folders:
+ACE->OCR/tests/integration/__pycache__
+
+# Files:
+ACE->OCR/tests/integration/__init__.py
+ACE->OCR/tests/integration/test_end_to_end.py
+ACE->OCR/tests/integration/test_v1_1_0.py
+
+
+**Tool Call: List the `ACE->OCR/tests/fixtures` directory's contents**
+Status: Completed
+
+
+# Files:
+ACE->OCR/tests/fixtures/complex_ai_studio_sample.html
+ACE->OCR/tests/fixtures/deepseek_latex_sample.html
+ACE->OCR/tests/fixtures/generic_chat_sample.html
+ACE->OCR/tests/fixtures/grok_mermaid_sample.html
+
+
+## Assistant
+
+Bonne cartographie. Je lance maintenant la lecture parallèle de tous les fichiers sources critiques.
+
+**Tool Call: Read file `ace/core/sanctuary.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import BeautifulSoup, Tag, NavigableString\nimport hashlib\nimport re\nfrom typing import Dict, Any, List, Set\nfrom ace.models.chat import ContentType\nfrom ace.utils.regex import MERMAID_DETECTION_RE\n\nclass SanctuaryEntry:\n    def __init__(self, raw_content: str, type: str, formatted_content: str = \"\"):\n        self.raw_content = raw_content\n        self.type = type\n        self.formatted_content = formatted_content\n\n    def to_dict(self) -> Dict[str, Any]:\n        return {\n            \"raw_content\": self.raw_content,\n            \"type\": self.type,\n            \"formatted_content\": self.formatted_content\n        }\n\nclass SanctuaryManager:\n    def __init__(self):\n        self.mapping: Dict[str, SanctuaryEntry] = {}\n        self.processed_ids: Set[int] = set()\n\n    def _generate_uuid(self, content: str, prefix: str) -> str:\n        h = hashlib.md5(content.encode()).hexdigest()[:8]\n        return f\"__ACE_{prefix}_{h}__\"\n\n    def _mark_processed(self, tag: Tag):\n        \"\"\"Marque un tag et tous ses descendants comme traités.\"\"\"\n        self.processed_ids.add(id(tag))\n        for descendant in tag.descendants:\n            self.processed_ids.add(id(descendant))\n\n    def extract(self, soup: BeautifulSoup) -> Dict[str, SanctuaryEntry]:\n        \"\"\"Extrait les blocs complexes et les remplace par des UUID.\"\"\"\n        self.processed_ids.clear()\n        \n        # 1. Extraction du CODE (pre)\n        for pre in soup.find_all('pre'):\n            if id(pre) in self.processed_ids: continue\n            \n            code_tag = pre.find('code')\n            raw_content = code_tag.get_text() if code_tag else pre.get_text()\n            uuid_key = self._generate_uuid(raw_content, \"CODE\")\n            \n            lang = \"\"\n            if code_tag and code_tag.get('class'):\n                for c in code_tag.get('class'):\n                    if c.startswith('language-'):\n                        lang = c.replace('language-', '')\n                        break\n            \n            formatted = f\"``` {lang}\\n{raw_content}\\n```\"\n            self.mapping[uuid_key] = SanctuaryEntry(raw_content, \"code\", formatted)\n            \n            self._mark_processed(pre)\n            pre.clear()\n            pre.append(NavigableString(uuid_key))\n\n        # 2. Extraction MERMAID\n        for tag in soup.find_all(['div', 'p']):\n            if id(tag) in self.processed_ids: continue\n            \n            # Anti-Wrapper: Ne pas traiter les divs structurels comme du Mermaid\n            if tag.name == 'div' and tag.find(['div', 'article', 'section', 'table']):\n                continue\n                \n            text = tag.get_text()\n            if MERMAID_DETECTION_RE.search(text):\n                raw_mermaid = re.sub(r'^(?:}}%%|%%{.*?\\}%%)', '', text).strip()\n                uuid_key = self._generate_uuid(raw_mermaid, \"MERM\")\n                formatted = f\"```mermaid\\n{raw_mermaid}\\n```\"\n                self.mapping[uuid_key] = SanctuaryEntry(raw_mermaid, \"mermaid\", formatted)\n                \n                self._mark_processed(tag)\n                tag.clear()\n                tag.append(NavigableString(uuid_key))\n\n        # 3. Extraction MATH (LaTeX/KaTeX)\n        for annot in soup.find_all('annotation', encoding=\"application/x-tex\"):\n            if id(annot) in self.processed_ids: continue\n            \n            raw_math = annot.get_text().strip()\n            uuid_key = self._generate_uuid(raw_math, \"MATH\")\n            \n            parent_math = annot.find_parent('math')\n            is_block = (parent_math and parent_math.get('display') == 'block')\n            \n            formatted = f\"$$\\n{raw_math}\\n$$\" if is_block else f\"${raw_math}$\"\n            self.mapping[uuid_key] = SanctuaryEntry(raw_math, \"math\", formatted)\n            \n            target = annot.find_parent(class_=\"katex\") or parent_math or annot\n            self._mark_processed(target)\n            target.clear()\n            target.append(NavigableString(uuid_key))\n\n        return self.mapping\n\n    def restore(self, text: str, mapping: Dict[str, SanctuaryEntry]) -> str:\n        \"\"\"Réinjecte les contenus protégés.\"\"\"\n        restored_text = text\n        for uuid_key, entry in mapping.items():\n            restored_text = restored_text.replace(uuid_key, entry.formatted_content)\n        return restored_text\n"
+}
+```
+
+**Tool Call: Read file `ace/engine/detector.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import BeautifulSoup, Tag\nfrom typing import List, Dict, Any, Optional\nimport re\nfrom collections import defaultdict\n\nclass TopologicalDetector:\n    \"\"\"\n    Détecteur topologique V1.2.0.\n    Utilise 'Sliding Window Merging' en O(N) pour agglomérer les flux contigus, \n    résolvant la fragmentation tout en évitant le (O(N^2)).\n    \"\"\"\n    def __init__(self, min_density: int = 3):\n        self.min_density = min_density\n        self.uuid_pattern = re.compile(r'__ACE_[A-Z]+_[a-f0-9]{8}__')\n\n    def _text_density(self, tag: Tag) -> int:\n        return len(tag.get_text(strip=True).split())\n\n    def _compute_fast_signature(self, tag: Tag) -> str:\n        \"\"\"Génère une empreinte rapide basée sur le tag et ses styles globaux.\"\"\"\n        classes = tag.get('class', [])\n        if isinstance(classes, str): classes = [classes]\n        \n        # On ne garde que les classes stables (pas d'ID auto générés)\n        stable = [c for c in classes if not re.search(r'\\d{4,}|[a-f0-9]{6,}', c)]\n        \n        # On hash la structure basique (le tag et ses classes)\n        # On préfixe par la profondeur pour décourager les fusions verticales illogiques.\n        depth = len(list(tag.parents))\n        return f\"d{depth}|{tag.name}|{'+'.join(sorted(stable[:3]))}\" \n\n    def _are_compatible_for_merge(self, cand1: Tag, cand2: Tag) -> bool:\n        \"\"\"\n        Vérifie si deux candidats peuvent fusionner.\n        Critères V1.2 : Parent commun OU oncle/neveu, avec vérification de similarité\n        allégée pour empêcher la fusion de conteneurs structurellement orthogonaux.\n        \"\"\"\n        if cand1 in cand2.parents or cand2 in cand1.parents:\n            return False\n            \n        distance_ok = False\n        if cand1.parent == cand2.parent:\n            distance_ok = True\n        elif cand1.parent and cand2.parent:\n            parent1 = getattr(cand1, 'parent', None)\n            parent2 = getattr(cand2, 'parent', None)\n            if parent2 == getattr(parent1, 'parent', None) or parent1 == getattr(parent2, 'parent', None):\n                distance_ok = True\n            elif getattr(parent1, 'parent', None) == getattr(parent2, 'parent', None) and getattr(parent1, 'parent', None) is not None:\n                distance_ok = True\n                \n        if not distance_ok:\n            return False\n            \n        # Similarité de signature (Seuil allégé)\n        classes1 = set(c for c in cand1.get('class', []) if not re.search(r'\\d{4,}', c))\n        classes2 = set(c for c in cand2.get('class', []) if not re.search(r'\\d{4,}', c))\n        \n        if classes1 and classes2:\n            # S'ils ont tous les deux des classes, ils doivent en partager au moins une\n            if not classes1.intersection(classes2):\n                return False\n                \n        # Rejet des fusions de tags orthogonaux \n        text_tags = {'p', 'li', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'span', 'strong', 'em', 'code', 'pre'}\n        if cand1.name != cand2.name:\n            if cand1.name not in text_tags or cand2.name not in text_tags:\n                return False\n                \n        return True\n\n    def _score_cluster(self, cluster: List[Tag], total_document_words: int) -> float:\n        \"\"\"\n        Calcule un score basé sur : Cohésion * Granularité * Richesse - Pénalité Wrapper.\n        \"\"\"\n        n = len(cluster)\n        if n == 0: return 0.0\n        \n        # Richesse\n        richness = 1.0\n        for t in cluster:\n            if t.find(['pre', 'code', 'table', 'blockquote', 'li', 'h1', 'h2']):\n                richness += 0.5\n        richness = min(richness, 3.0) \n\n        # Granularité (inverse de la profondeur moyenne)\n        avg_depth = sum(len(list(t.parents)) for t in cluster) / n\n        granularity = avg_depth / 10.0 # Plus c'est profond, plus le facteur grandi (favorise les feuilles)\n\n        # Cohésion (texte brut)\n        avg_density = sum(self._text_density(t) for t in cluster) / n\n        \n        base_score = n * avg_density * granularity * richness\n        \n        # Bonus UUID pour protéger le code restoré de Sanctuary\n        if any(self.uuid_pattern.search(t.get_text()) for t in cluster):\n            base_score *= 1.5\n            \n        # Pénalité Anti-Wrapper : si un seul cluster monopolise le document\n        if len(cluster) == 1 and total_document_words > 50:\n            cluster_words = sum(self._text_density(t) for t in cluster)\n            if cluster_words / total_document_words > 0.8:\n                base_score /= 10.0\n                \n        return base_score\n\n    def _merge_sequential_candidates(self, candidates: List[Tag]) -> List[List[Tag]]:\n        \"\"\"\n        Glisse sur la liste séquentielle et fusionne les éléments contigus (ou quasi-contigus) \n        compatibles en gardant les 3 derniers clusters ouverts pour tolérer l'imbrication DOM.\n        Complexité : O(N).\n        \"\"\"\n        if not candidates:\n            return []\n            \n        # sourceline permet d'assurer un tri parfait dans l'ordre d'apparition\n        candidates = sorted(candidates, key=lambda t: t.sourceline or 0)\n        \n        clusters = []\n        \n        for current in candidates:\n            merged = False\n            # Recherche d'un cluster compatible parmi les 3 plus récents\n            for cluster in reversed(clusters[-3:]):\n                if self._are_compatible_for_merge(cluster[-1], current):\n                    cluster.append(current)\n                    merged = True\n                    break\n            \n            if not merged:\n                clusters.append([current])\n                \n        return clusters\n\n    def detect(self, soup: BeautifulSoup) -> List[Tag]:\n        \"\"\"Détecte les blocs via Sliding Window Temporel et Scoring intelligent.\"\"\"\n        body = soup.find('body')\n        total_words = self._text_density(body) if body else self._text_density(soup)\n        \n        # 0. Nettoyage du bruit UI\n        for noise in soup.find_all(attrs={\"role\": [\"dialog\", \"banner\", \"navigation\"]}):\n            noise.decompose()\n        for noise in soup.find_all(class_=re.compile(r'cookie|modal|overlay|popup', re.I)):\n            if noise.name != 'body':\n                noise.decompose()\n                \n        # 1. Sélection candiats purs\n        candidates = []\n        for tag in soup.find_all(True):\n            if tag.name in ['html', 'body', 'script', 'style', 'head', 'header', 'footer', 'nav']: \n                continue\n            if self._text_density(tag) >= self.min_density or self.uuid_pattern.search(tag.get_text()):\n                candidates.append(tag)\n                \n        if not candidates: \n            return []\n            \n        # 2. V1.2.0 Sliding Window Merging\n        clusters = self._merge_sequential_candidates(candidates)\n        \n        # 3. Élimination des clusters parents (Dédoublonnage vertical)\n        final_clusters = []\n        for c1 in clusters:\n            is_redundant = False\n            for c2 in clusters:\n                if c1 is c2: continue\n                # Si tous les noeuds de c1 ont pour ancêtres un noeud de c2\n                if all(any(node is ancestor or node in getattr(ancestor, 'descendants', []) for ancestor in c2) for node in c1):\n                    # Comparaison via Scoring V1.2\n                    if self._score_cluster(c2, total_words) > self._score_cluster(c1, total_words):\n                        is_redundant = True\n                        break\n            if not is_redundant:\n                final_clusters.append(c1)\n\n        if not final_clusters:\n            return []\n            \n        # 4. Champion absolu\n        best_cluster = max(final_clusters, key=lambda c: self._score_cluster(c, total_words))\n        \n        return best_cluster\n"
+}
+```
+
+**Tool Call: Read file `ace/engine/converter.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import Tag, NavigableString\nfrom ace.processors.tables import convert_table\nimport re\n\nclass MarkdownDispatcher:\n    def __init__(self, process_tables: bool = True):\n        self.process_tables = process_tables\n        self.handlers = {\n            'p': self._handle_p,\n            'h1': self._handle_header,\n            'h2': self._handle_header,\n            'h3': self._handle_header,\n            'h4': self._handle_header,\n            'h5': self._handle_header,\n            'h6': self._handle_header,\n            'ul': self._handle_list,\n            'ol': self._handle_list,\n            'li': self._handle_li,\n            'br': self._handle_br,\n            'hr': self._handle_hr,\n            'table': self._handle_table,\n            'strong': self._handle_inline,\n            'b': self._handle_inline,\n            'em': self._handle_inline,\n            'i': self._handle_inline,\n            'code': self._handle_code_inline,\n            'a': self._handle_a,\n            'img': self._handle_img,\n            'blockquote': self._handle_blockquote,\n        }\n\n    def convert(self, tag: Tag) -> str:\n        \"\"\"Point d'entrée de la conversion récursive.\"\"\"\n        if isinstance(tag, NavigableString):\n            return str(tag)\n            \n        # Règle Prioritaire : Si le tag a été remplacé par un UUID du Sanctuaire\n        # BS4 renvoie le NavigableString de l'UUID. \n        # Si on est ici, c'est un Tag.\n        \n        # On vérifie si le tag contient uniquement un UUID (cas rare après replacement)\n        text = tag.get_text(strip=True)\n        if re.match(r'^__ACE_[A-Z]+_[a-f0-9]{8}__$', text):\n            return text\n\n        handler = self.handlers.get(tag.name, self._handle_generic)\n        return handler(tag)\n\n    def _handle_generic(self, tag: Tag) -> str:\n        \"\"\"Gère les tags inconnus en explorant récursivement leurs enfants.\"\"\"\n        content = \"\"\n        for child in tag.children:\n            if isinstance(child, NavigableString):\n                content += str(child)\n            else:\n                content += self.convert(child)\n        return content\n\n    def _handle_p(self, tag: Tag) -> str:\n        return f\"\\n{self._handle_generic(tag)}\\n\"\n\n    def _handle_header(self, tag: Tag) -> str:\n        level = int(tag.name[1])\n        return f\"\\n{'#' * level} {self._handle_generic(tag)}\\n\"\n\n    def _handle_list(self, tag: Tag) -> str:\n        return f\"\\n{self._handle_generic(tag)}\\n\"\n\n    def _handle_li(self, tag: Tag) -> str:\n        prefix = \"- \"\n        if tag.parent and tag.parent.name == 'ol':\n            # Optionnel: gérer les index\n            prefix = \"1. \"\n        return f\"{prefix}{self._handle_generic(tag)}\\n\"\n\n    def _handle_br(self, tag: Tag) -> str:\n        return \"  \\n\"\n\n    def _handle_hr(self, tag: Tag) -> str:\n        return \"\\n---\\n\"\n\n    def _handle_table(self, tag: Tag) -> str:\n        if self.process_tables:\n            return convert_table(tag)\n        return f\"\\n{self._handle_generic(tag)}\\n\"\n\n    def _handle_inline(self, tag: Tag) -> str:\n        sym = \"**\" if tag.name in ['strong', 'b'] else \"*\"\n        return f\"{sym}{self._handle_generic(tag)}{sym}\"\n\n    def _handle_code_inline(self, tag: Tag) -> str:\n        # Ne pas doubler si c'est déjà un UUID injecté\n        content = self._handle_generic(tag)\n        if re.match(r'^__ACE_[A-Z]+_[a-f0-9]{8}__$', content):\n            return content\n        return f\"`{content}`\"\n\n    def _handle_a(self, tag: Tag) -> str:\n        \"\"\"Gère les hyperliens [texte](url).\"\"\"\n        href = tag.get('href', '')\n        text = self._handle_generic(tag).strip()\n        if href and text:\n            return f\"[{text}]({href})\"\n        return text or href\n\n    def _handle_img(self, tag: Tag) -> str:\n        \"\"\"Gère les images ![alt](src).\"\"\"\n        src = tag.get('src', '')\n        alt = tag.get('alt', '')\n        if src:\n            return f\"![{alt}]({src})\"\n        return \"\"\n\n    def _handle_blockquote(self, tag: Tag) -> str:\n        \"\"\"Gère les citations avec >.\"\"\"\n        content = self._handle_generic(tag).strip()\n        if not content:\n            return \"\"\n        lines = content.split('\\n')\n        quoted = '\\n'.join(f\"> {line}\" for line in lines)\n        return f\"\\n{quoted}\\n\"\n"
+}
+```
+
+**Tool Call: Read file `ace/engine/heuristic.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import BeautifulSoup, Tag\nfrom typing import List, Tuple\nimport re\nfrom abc import ABC, abstractmethod\n\nclass BaseProbe(ABC):\n    \"\"\"Sonde de base pour le HeuristicDetector.\"\"\"\n    \n    @abstractmethod\n    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:\n        \"\"\"\n        Analyse l'arbre DOM et retourne une agrégation candidate.\n        Retour :\n            - Liste des balises (tours de conversation)\n            - Score de confiance absolu (0.0 à 1.0)\n        \"\"\"\n        pass\n\nclass DataAttributeProbe(BaseProbe):\n    \"\"\"Recherche des attributs de données conversationnels stricts (ex: data-message-id). Confiance absolue.\"\"\"\n    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:\n        # 1. Essai sur les data-testid type \"conversation-turn-*\"\n        candidates = soup.find_all(attrs={\"data-testid\": re.compile(r\"conversation|message|turn\", re.I)})\n        \n        # 2. Essai sur data-message-author-role\n        if not candidates:\n            candidates = soup.find_all(attrs={\"data-message-author-role\": True})\n            \n        # 3. Essai sur attributs génériques data-message*\n        if not candidates:\n            candidates = []\n            for tag in soup.find_all(True):\n                if any(attr.startswith('data-message') for attr in tag.attrs):\n                    candidates.append(tag)\n\n        if len(candidates) >= 2:\n            # Filtre terminal : exclure le bruit UI\n            candidates = [c for c in candidates if c.name not in ['button', 'svg', 'path', 'script', 'form', 'nav']]\n            return candidates, 0.95\n        return [], 0.0\n\nclass SemanticClassProbe(BaseProbe):\n    \"\"\"Recherche des classes sémantiques récurrentes liées aux LLMs.\"\"\"\n    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:\n        user_pattern = re.compile(r'\\b(user|human|you)(-|_)?message\\b', re.I)\n        bot_pattern = re.compile(r'\\b(assistant|model|ai|bot|agent)(-|_)?(message|turn)\\b', re.I)\n        \n        candidates = []\n        for tag in soup.find_all(True):\n            classes = tag.get('class', [])\n            if isinstance(classes, str): \n                classes = [classes]\n            class_str = \" \".join(classes)\n            if user_pattern.search(class_str) or bot_pattern.search(class_str):\n                candidates.append(tag)\n                \n        # Fallback pour des classes simples type \"message\"\n        if not candidates:\n            msg_candidates = soup.find_all(class_=re.compile(r'^message$', re.I))\n            if len(msg_candidates) >= 2:\n                # Filtrer souvent il y a un container \"message-list\"\n                msg_candidates = [m for m in msg_candidates if 'list' not in \" \".join(m.get('class', [])).lower()]\n                candidates = msg_candidates\n                \n        if len(candidates) >= 2:\n            return candidates, 0.8\n        return [], 0.0\n\nclass StructuralSeparatorProbe(BaseProbe):\n    \"\"\"Recherche des conteneurs séparés par <hr>.\"\"\"\n    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:\n        hrs = soup.find_all('hr')\n        if len(hrs) >= 1:\n            parents_with_hrs = set(hr.parent for hr in hrs if hr.parent)\n            best_parent = None\n            max_hrs = 0\n            for p in parents_with_hrs:\n                count = len(p.find_all('hr', recursive=False))\n                if count > max_hrs:\n                    max_hrs = count\n                    best_parent = p\n                    \n            if best_parent:\n                blocks = [c for c in best_parent.find_all(recursive=False) \n                          if isinstance(c, Tag) and c.name not in ['hr', 'script', 'style']]\n                if len(blocks) >= 2:\n                    return blocks, 0.7\n        return [], 0.0\n\nclass FallbackStructuralRepetitionProbe(BaseProbe):\n    \"\"\"Dernier recours: Cherche le motif structurel le plus répété au sein du document.\"\"\"\n    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:\n        # Logique simplifiée en O(N) :\n        # On regroupe les balises par leur paire (Nom + Parent_Nom)\n        from collections import defaultdict\n        patterns = defaultdict(list)\n        \n        for tag in soup.find_all(['div', 'article', 'section']):\n            if tag.parent:\n                sig = f\"{tag.parent.name}>{tag.name}\"\n                patterns[sig].append(tag)\n                \n        if not patterns:\n            return [], 0.0\n            \n        best_sig = max(patterns.keys(), key=lambda k: len(patterns[k]))\n        candidates = patterns[best_sig]\n        \n        # Filtre anti-densité pour ne pas prendre des petits paragraphes nav\n        valid = [c for c in candidates if len(c.get_text(strip=True).split()) > 5]\n        \n        if len(valid) >= 4:\n            return valid, 0.4\n        return [], 0.0\n\nclass HeuristicDetector:\n    \"\"\"\n    Système de détection basé sur un pattern Chain of Responsibility \"Waterfall\".\n    Les sondes sont organisées de la plus spécifique à la plus générique.\n    \"\"\"\n    def __init__(self):\n        self.probes = [\n            DataAttributeProbe(),\n            SemanticClassProbe(),\n            StructuralSeparatorProbe(),\n            FallbackStructuralRepetitionProbe()\n        ]\n\n    def detect(self, soup: BeautifulSoup) -> List[Tag]:\n        \"\"\"\n        Exécute la chaîne d'évaluation et retourne les blocs de la première sonde validee.\n        La gestion du faux positif sera gérée a un niveau transverse par l'ExtractionValidator.\n        \"\"\"\n        for probe in self.probes:\n            blocks, confidence = probe.probe(soup)\n            # Threshold de 0.4 minimal pour valider un effort heuristique\n            if confidence >= 0.4 and len(blocks) >= 1:\n                return blocks\n                \n        return []\n"
+}
+```
+
+**Tool Call: Read file `ace/engine/inferencer.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import Tag\nfrom typing import List, Tuple, Optional, Any\nfrom ace.models.chat import Role\nimport re\n\nclass RoleInferrer:\n    def __init__(self):\n        self.user_signals = ['user', 'human', 'you', 'vous']\n        self.model_signals = ['assistant', 'model', 'chatgpt', 'deepseek', 'ai', 'thought', 'assistant-message']\n\n    def infer(self, tag: Tag, context: List[Any] = []) -> Tuple[Role, float]:\n        \"\"\"\n        Déduit le rôle d'un message.\n        Retourne (Role, confidence).\n        \"\"\"\n        user_score = 0.0\n        model_score = 0.0\n        \n        # 1. Analyse des classes CSS\n        classes = tag.get('class', [])\n        if isinstance(classes, str): classes = [classes]\n        class_str = \" \".join(classes).lower()\n        \n        for sig in self.user_signals:\n            if sig in class_str: user_score += 5.0\n            \n        for sig in self.model_signals:\n            # 'thought' est un signal très fort pour MODEL\n            if sig == 'thought' and sig in class_str: model_score += 8.0\n            elif sig in class_str: model_score += 5.0\n            \n        # 2. Analyse du contenu (Signaux secondaires)\n        # Présence de code ou LaTeX -> souvent MODEL\n        if tag.find(['pre', 'code', 'annotation', 'math']):\n            model_score += 2.0\n            \n        # 3. Arbitrage et Fallback par alternance\n        if user_score > model_score:\n            return Role.USER, 0.8\n        elif model_score > user_score:\n            return Role.MODEL, 0.8\n        else:\n            # Égalité ou absence de signal -> Alternance par rapport au contexte\n            if context:\n                last_role = context[-1].role\n                if last_role == Role.USER:\n                    return Role.MODEL, 0.5\n                else:\n                    return Role.USER, 0.5\n            else:\n                # Premier message du chat -> Souvent User\n                return Role.USER, 0.4\n"
+}
+```
+
+**Tool Call: Read file `ace/engine/validator.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import BeautifulSoup, Tag\nfrom typing import List\nfrom ace.engine.inferencer import RoleInferrer\n\nclass ExtractionValidator:\n    \"\"\"\n    Validateur transverse chargé de s'assurer qu'un ensemble de blocs candidats \n    constitue véritablement une conversation extraite et non un faux positif.\n    Ce validateur est la clé de voûte de l'architecture V1.2.0.\n    \"\"\"\n    def __init__(self, min_coverage: float = 0.15):\n        self.min_coverage = min_coverage\n        self.inferrer = RoleInferrer()\n\n    def _get_word_count(self, text: str) -> int:\n        return len(text.split())\n\n    def _get_depth(self, element: Tag) -> int:\n        return len(list(element.parents))\n\n    def is_valid(self, blocks: List[Tag], soup: BeautifulSoup) -> bool:\n        \"\"\"\n        Évalue la validité algorithmique et structurelle d'une liste de blocs.\n        Retourne True si c'est une conversation considérée valide, False sinon (autorisant un fallback).\n        \"\"\"\n        if not blocks:\n            return False\n            \n        body = soup.find('body')\n        if not body:\n            return False\n            \n        total_words = self._get_word_count(body.get_text(strip=True))\n        if total_words == 0:\n            return False # Pas de contenu texte dans la page\n        \n        # 1. Test du wrapper unique (Anti-wrapper massif)\n        if len(blocks) == 1:\n            block = blocks[0]\n            depth = self._get_depth(block)\n            block_words = self._get_word_count(block.get_text(strip=True))\n            coverage = block_words / total_words\n            \n            # Rejet absolu du conteneur géant\n            if depth < 3 and coverage > 0.7:\n                return False\n                \n        # 2. Test de conversation minimale (Alternance des rôles)\n        if len(blocks) >= 2:\n            roles = set()\n            for b in blocks:\n                role, _ = self.inferrer.infer(b, context=[])\n                roles.add(role)\n            \n            # Si on a plusieurs blocs mais qu'absolument tous sont du même type,\n            # sans aucune alternance, on rejette (ex: menu de navigation fragmenté).\n            if len(roles) == 1:\n                # Cependant, certains exports courts peuvent n'avoir que le bot (prompt en titre)\n                # Mais en général, s'il y a len >= 2 et tout est identique, c'est très suspect pour une conversation.\n                # On valide le critère strict comme requis par l'audit.\n                return False\n                \n        # 3. Test de couverture textuelle\n        blocks_words = sum(self._get_word_count(b.get_text(strip=True)) for b in blocks)\n        coverage = blocks_words / total_words\n        \n        if coverage < self.min_coverage:\n            return False\n            \n        return True\n"
+}
+```
+
+**Tool Call: Read file `ace/models/chat.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from dataclasses import dataclass, field\nfrom enum import Enum\nfrom typing import List, Dict, Any, Optional\nfrom datetime import datetime\nimport uuid\n\nclass Role(Enum):\n    USER = \"user\"\n    MODEL = \"model\"\n    SYSTEM = \"system\"\n\nclass ContentType(Enum):\n    TEXT = \"text\"\n    CODE = \"code\"\n    MATH_INLINE = \"math_inline\"\n    MATH_BLOCK = \"math_block\"\n    MERMAID = \"mermaid\"\n    TABLE = \"table\"\n    IMAGE = \"image\"\n\n@dataclass\nclass MessagePart:\n    type: ContentType\n    content: str\n    language: Optional[str] = None\n    metadata: Dict[str, Any] = field(default_factory=dict)\n\n@dataclass\nclass Turn:\n    index: int\n    role: Role\n    content: List[MessagePart]\n    confidence: float\n    timestamp: Optional[datetime] = None\n    raw_html: Optional[str] = None\n    metadata: Dict[str, Any] = field(default_factory=dict)\n\n@dataclass\nclass ChatSession:\n    id: str = field(default_factory=lambda: uuid.uuid4().hex)\n    source: Optional[str] = None\n    title: Optional[str] = None\n    created_at: Optional[datetime] = field(default_factory=datetime.now)\n    turns: List[Turn] = field(default_factory=list)\n    metadata: Dict[str, Any] = field(default_factory=dict)\n\n@dataclass\nclass ExtractionOptions:\n    detector: str = \"topo\"  # topo, heuristic, flux\n    format: str = \"md\"      # md, json, yaml\n    frontmatter: bool = False\n    debug: bool = False\n    quiet: bool = False\n    raw: bool = False\n    no_table: bool = False\n\n@dataclass\nclass ExtractionResult:\n    content: str\n    format: str\n    session: ChatSession\n    debug_data: Dict[str, Any] = field(default_factory=dict)\n"
+}
+```
+
+**Tool Call: Read file `ace/processors/tables.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import Tag\n\ndef convert_table(table_tag: Tag) -> str:\n    \"\"\"Convertit un tag table BS4 en Markdown GFM.\"\"\"\n    rows = table_tag.find_all('tr')\n    if not rows:\n        return \"\"\n\n    md_rows = []\n    \n    # Extraction de l'entête\n    header_row = rows[0]\n    headers = [cell.get_text(strip=True) for cell in header_row.find_all(['th', 'td'])]\n    \n    md_rows.append(\"| \" + \" | \".join(headers) + \" |\")\n    md_rows.append(\"| \" + \" | \".join([\"---\"] * len(headers)) + \" |\")\n    \n    # Données (en sautant l'entête)\n    for row in rows[1:]:\n        cells = [cell.get_text(strip=True) for cell in row.find_all(['td', 'th'])]\n        # Ajuster si le nombre de cellules diffère\n        if len(cells) < len(headers):\n            cells += [\"\"] * (len(headers) - len(cells))\n        md_rows.append(\"| \" + \" | \".join(cells[:len(headers)]) + \" |\")\n        \n    return \"\\n\" + \"\\n\".join(md_rows) + \"\\n\"\n"
+}
+```
+
+**Tool Call: Read file `ace/utils/regex.py`**
+Status: Completed
+
+```json
+{
+  "Text": "import re\n\n# Labels UI à supprimer (insensible à la casse)\nUI_LABELS_PATTERN = re.compile(\n    r'^(vous avez dit\\s*:?|chatgpt a dit\\s*:?|gemini a dit\\s*:?|claude a dit\\s*:?|'\n    r'assistant\\s*:?|user\\s*:?|human\\s*:?|ai\\s*:?|model\\s*:?|'\n    r'réflexion durant.*?secondes?\\s*\\.?|thinking\\s*\\.*)$',\n    re.IGNORECASE | re.MULTILINE\n)\n\n# Pattern de détection Mermaid\nMERMAID_KEYWORDS = [\n    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', \n    'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitGraph', \n    'journey', 'C4Context', 'mindmap', 'timeline'\n]\n\nMERMAID_DETECTION_RE = re.compile(\n    r'^\\s*(?:}}%%|%%{.*?\\}%%)?\\s*(' + '|'.join(MERMAID_KEYWORDS) + r')\\b',\n    re.MULTILINE | re.IGNORECASE\n)\n\n# Delimiteurs LaTeX (KaTeX / MathJax)\nLATEX_INLINE_RE = re.compile(r'\\\\\\\\\\((.*?)\\\\\\\\\\)|\\\\\\((.*?)\\\\\\)')\nLATEX_BLOCK_RE = re.compile(r'\\\\\\[(.*?)\\\\\\]', re.DOTALL)\n"
+}
+```
+
+**Tool Call: Read file `ace/utils/dom.py`**
+Status: Completed
+
+```json
+{
+  "Text": "from bs4 import Tag, NavigableString\nimport re\n\ndef get_clean_text(tag: Tag) -> str:\n    \"\"\"Extrait le texte d'un tag en le nettoyant des espaces superflus.\"\"\"\n    return tag.get_text(separator=\" \", strip=True)\n\ndef is_ui_element(tag: Tag) -> bool:\n    \"\"\"Détermine si un tag est probablement un élément d'interface (bouton, menu, etc.).\"\"\"\n    ui_keywords = [\"button\", \"nav\", \"footer\", \"header\", \"menu\", \"tooltip\", \"copy\"]\n    classes = tag.get(\"class\", [])\n    if isinstance(classes, str): classes = [classes]\n    \n    # Vérification par classe\n    for cls in classes:\n        if any(kw in cls.lower() for kw in ui_keywords):\n            return True\n            \n    # Vérification par nom de tag\n    if tag.name in [\"button\", \"nav\", \"footer\", \"header\"]:\n        return True\n        \n    return False\n\ndef is_empty_node(tag: Tag) -> bool:\n    \"\"\"Vérifie si un nœud est vide ou ne contient que des espaces.\"\"\"\n    return not tag.get_text(strip=True)\n"
+}
+```
+
+**Tool Call: Read file `ace/main.py`**
+Status: Completed
+
+```json
+{
+  "Text": "import json\ntry:\n    import yaml\nexcept ImportError:\n    yaml = None\n\nfrom datetime import datetime\nfrom bs4 import BeautifulSoup\nfrom typing import List, Dict, Any, Optional\n\nfrom ace.core.sanctuary import SanctuaryManager\nfrom ace.engine.detector import TopologicalDetector\nfrom ace.engine.heuristic import HeuristicDetector\nfrom ace.engine.validator import ExtractionValidator\nfrom ace.engine.inferencer import RoleInferrer\nfrom ace.engine.converter import MarkdownDispatcher\nfrom ace.models.chat import Role, Turn, ChatSession, MessagePart, ContentType, ExtractionOptions, ExtractionResult\n\ndef process_html(html_content: str, options: Optional[ExtractionOptions] = None) -> ExtractionResult:\n    \"\"\"Orchestre le pipeline complet d'extraction et de conversion.\"\"\"\n    if options is None:\n        options = ExtractionOptions()\n        \n    if options.format == 'yaml' and yaml is None:\n        raise ImportError(\"PyYAML est requis pour le format YAML. Installez-le avec 'pip install PyYAML'.\")\n        \n    soup = BeautifulSoup(html_content, 'html.parser')\n    debug_data: Dict[str, Any] = {}\n    \n    # 1. Sanctuaire (Extraction & Protection)\n    sanctuary = SanctuaryManager()\n    mapping = {}\n    if not options.raw:\n        mapping = sanctuary.extract(soup)\n        if options.debug:\n            # Sérialisation sécurisée du mapping pour le diagnostic\n            debug_data['sanctuary_map'] = {\n                k: v.to_dict() if hasattr(v, 'to_dict') else str(v) \n                for k, v in mapping.items()\n            }\n    \n    # 2. Détermination de la stratégie de détection\n    detector_topo = TopologicalDetector()\n    detector_heur = HeuristicDetector()\n    validator = ExtractionValidator()\n    \n    blocks = []\n    winning_strategy = \"\"\n    \n    # Mode Forcé ou Hybride (Auto)\n    if options.detector == 'topo':\n        blocks = detector_topo.detect(soup)\n        winning_strategy = \"forced_topo\"\n    elif options.detector == 'heuristic':\n        blocks = detector_heur.detect(soup)\n        winning_strategy = \"forced_heuristic\"\n    else:\n        # V1.2.0 HYBRID ORCHESTRATION (AUTO)\n        # 1. Passe Heuristique (très rapide, très précis)\n        heur_blocks = detector_heur.detect(soup)\n        if validator.is_valid(heur_blocks, soup):\n            blocks = heur_blocks\n            winning_strategy = \"auto_heuristic\"\n        else:\n            # 2. Passe Topologique (tolérant aux variations de flux, O(N))\n            topo_blocks = detector_topo.detect(soup)\n            if validator.is_valid(topo_blocks, soup):\n                blocks = topo_blocks\n                winning_strategy = \"auto_topological\"\n    \n    # 3. Fallback Lithos (Sécurité Absolue)\n    if not blocks:\n        body = soup.find('body')\n        if body:\n            blocks = [body]\n            winning_strategy = \"fallback_body\"\n            if not options.quiet:\n                import sys\n                print(\"⚠️  Avertissement : Les moteurs ont échoué ou ont été invalidés. Utilisation du fallback (corps entier).\", file=sys.stderr)\n    \n    if options.debug:\n        debug_data['detected_blocks_count'] = len(blocks)\n        debug_data['winning_strategy'] = winning_strategy\n    \n    # 3. Traitement des tours\n    inferrer = RoleInferrer()\n    # Support de l'option no_table via le dispatcher\n    dispatcher = MarkdownDispatcher(process_tables=not options.no_table)\n    \n    session = ChatSession()\n    session.turns = []\n    \n    for i, block in enumerate(blocks):\n        # Inférence du rôle\n        role, confidence = inferrer.infer(block, context=session.turns)\n        \n        # Conversion Markdown (les UUID sont préservés)\n        md_content = dispatcher.convert(block)\n        \n        # CRITIQUE LITHOS : Restauration des UUID pour chaque partie de message\n        if not options.raw:\n            restored_content = sanctuary.restore(md_content, mapping)\n        else:\n            restored_content = md_content\n            \n        # Création du tour (On pourrait segmenter ici à l'avenir)\n        part = MessagePart(type=ContentType.TEXT, content=restored_content)\n        turn = Turn(index=i, role=role, content=[part], confidence=confidence)\n        session.turns.append(turn)\n        \n    # 4. Génération du résultat selon le format\n    content = \"\"\n    if options.format == 'json':\n        data = {\n            \"session\": {\n                \"id\": session.id,\n                \"turns\": [\n                    {\n                        \"index\": t.index,\n                        \"role\": t.role.value,\n                        \"confidence\": t.confidence,\n                        \"content\": [{\"type\": p.type.value, \"content\": p.content} for p in t.content]\n                    } for t in session.turns\n                ]\n            }\n        }\n        content = json.dumps(data, indent=2, ensure_ascii=False)\n    elif options.format == 'yaml':\n        data = {\n            \"session\": {\n                \"id\": session.id,\n                \"turns\": [\n                    {\n                        \"index\": t.index,\n                        \"role\": t.role.value,\n                        \"content\": [{\"type\": p.type.value, \"content\": p.content} for p in t.content]\n                    } for t in session.turns\n                ]\n            }\n        }\n        content = yaml.dump(data, allow_unicode=True, sort_keys=False)\n    else:\n        # Markdown par défaut\n        full_md = \"\"\n        if options.frontmatter:\n            full_md += \"---\\n\"\n            full_md += f\"title: {session.title or 'ACE Extraction'}\\n\"\n            full_md += f\"date: {datetime.now().isoformat()}\\n\"\n            full_md += f\"turns_count: {len(session.turns)}\\n\"\n            full_md += \"---\\n\\n\"\n            \n        for turn in session.turns:\n            role_label = \"User\" if turn.role == Role.USER else \"MODEL\"\n            full_md += f\"## {role_label}\\n\\n\"\n            for part in turn.content:\n                full_md += part.content + \"\\n\"\n            full_md += \"\\n---\\n\\n\"\n            \n        # Nettoyage final\n        content = full_md.replace('\\n\\n\\n', '\\n\\n')\n    \n    return ExtractionResult(content=content, format=options.format, session=session, debug_data=debug_data)\n"
+}
+```
+
+**Tool Call: Read file `ace/cli.py`**
+Status: Completed
+
+```json
+{
+  "Text": "import sys\nimport argparse\nimport enum\nimport os\nimport json\nfrom pathlib import Path\nfrom datetime import datetime\nfrom typing import Optional\n\nfrom ace.main import process_html\nfrom ace.models.chat import ExtractionOptions, ExtractionResult\n\nclass ExitCode(enum.IntEnum):\n    SUCCESS = 0\n    FILE_NOT_FOUND = 1\n    PARSE_ERROR = 2\n    NO_MESSAGES_DETECTED = 3\n    CONVERSION_ERROR = 4\n    INTERNAL_ERROR = 5\n    USER_INTERRUPT = 130\n\ndef create_parser():\n    parser = argparse.ArgumentParser(\n        prog='ace',\n        description='ACE - Adaptive Chat Extractor (agnostique et universel)',\n        epilog='Utilisez --help-strategies pour plus de détails sur les algorithmes de détection.',\n        add_help=False\n    )\n    \n    # Groupes d'options\n    io_group = parser.add_argument_group('Entrée/Sortie')\n    io_group.add_argument('input', nargs='?', help='Fichier HTML ou - pour stdin')\n    io_group.add_argument('output_arg', nargs='?', help='Fichier de sortie (défaut: INPUT.md ou stdout)')\n    io_group.add_argument('-o', '--output', dest='output_opt', help='Spécifie explicitement le fichier de sortie')\n    io_group.add_argument('-f', '--format', choices=['md', 'json', 'yaml'], help='Format de sortie')\n    io_group.add_argument('-j', '--json', action='store_const', const='json', dest='format_opt', help='Sortie JSON')\n    \n    detect_group = parser.add_argument_group('Stratégies de détection')\n    detect_group.add_argument('-t', '--topo', action='store_const', const='topo', dest='detector', default='topo')\n    detect_group.add_argument('-H', '--heuristic', action='store_const', const='heuristic', dest='detector')\n    detect_group.add_argument('-F', '--flux', action='store_const', const='flux', dest='detector')\n    \n    meta_group = parser.add_argument_group('Métadonnées et format')\n    meta_group.add_argument('-m', '--frontmatter', action='store_true', help='Ajoute un en-tête YAML')\n    \n    debug_group = parser.add_argument_group('Diagnostic')\n    debug_group.add_argument('-d', '--debug', action='store_true', help='Active le mode diagnostic')\n    debug_group.add_argument('-q', '--quiet', action='store_true', help='Supprime les messages d\\'information')\n    \n    expert_group = parser.add_argument_group('Options Expert')\n    expert_group.add_argument('--raw', action='store_true', help='Désactive le Sanctuaire (protection des blocs complexes)')\n    expert_group.add_argument('--no-table', action='store_true', help='Désactive le processeur de tableaux')\n    \n    # Aide classique\n    parser.add_argument('-h', '--help', action='help', help='Affiche cette aide')\n    parser.add_argument('--help-strategies', action='store_true', help='Affiche l\\'aide sur les stratégies de détection')\n    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.1.0')\n    \n    return parser\n\ndef print_strategies_help():\n    print(\"\"\"\nStratégies de détection disponibles :\n  topo      (défaut) Analyse topologique agnostique, fonctionne sur tous les exports récents (ChatGPT, Claude, etc.).\n  heuristic Détection basée sur des motifs courants (fallback pour les vieux exports ou structures simplistes).\n  flux      Pour les conversations sans conteneur de messages explicite (ex: Grok avec <hr>).\n\nExemple d'utilisation :\n  ace --topo chat.html -o output.md\n  ace --flux simple_page.html --json\n\"\"\")\n\ndef resolve_format(args):\n    \"\"\"Détermine le format de sortie avec priorité au flag explicite.\"\"\"\n    if args.format:\n        return args.format\n    if getattr(args, 'format_opt', None):\n        return args.format_opt\n        \n    output_path = args.output_opt or args.output_arg\n    if output_path and output_path != '-':\n        ext = Path(output_path).suffix.lower()\n        if ext == '.json':\n            return 'json'\n        elif ext in ['.yaml', '.yml']:\n            return 'yaml'\n        elif ext == '.md':\n            return 'md'\n    return 'md'\n\ndef resolve_output_path(args, format_final):\n    \"\"\"Détermine le chemin de sortie avec induction intelligente du nom.\"\"\"\n    if args.output_opt:\n        return args.output_opt\n    if args.output_arg:\n        return args.output_arg\n    if args.input == '-':\n        return '-'\n        \n    # Induction automatique\n    input_path = Path(args.input)\n    suffix = f\".{format_final}\"\n    if format_final == 'yaml':\n        suffix = \".yaml\"\n    return str(input_path.with_suffix(suffix))\n\ndef generate_report(result: ExtractionResult, meta: dict, input_name: str) -> str:\n    \"\"\"Génère un rapport Markdown lisible pour le dossier de diagnostic.\"\"\"\n    report = f\"# Rapport de Diagnostic ACE - {input_name}\\n\\n\"\n    report += f\"- **Date** : {meta['date']}\\n\"\n    report += f\"- **Statut** : SUCCESS\\n\"\n    report += f\"- **Version** : {meta['version']}\\n\"\n    report += f\"- **Format** : {result.format}\\n\"\n    report += f\"- **Tours détectés** : {len(result.session.turns)}\\n\\n\"\n    \n    report += \"## Résumé des tours\\n\\n\"\n    for turn in result.session.turns:\n        role = turn.role.value if hasattr(turn.role, 'value') else str(turn.role)\n        content_preview = \"N/A\"\n        if turn.content:\n            content_preview = turn.content[0].content[:120].replace('\\n', ' ') + \"...\"\n            \n        report += f\"### Tour {turn.index} - {role} (Confiance: {turn.confidence:.2f})\\n\"\n        report += f\"> {content_preview}\\n\\n\"\n    \n    return report\n\ndef main():\n    try:\n        parser = create_parser()\n        args = parser.parse_args()\n        \n        if args.help_strategies:\n            print_strategies_help()\n            sys.exit(ExitCode.SUCCESS)\n            \n        if not args.input:\n            parser.print_help()\n            sys.exit(ExitCode.SUCCESS) # Or error? Success for help.\n            \n        # Résolution du format et de la sortie\n        format_final = resolve_format(args)\n        output_path_str = resolve_output_path(args, format_final)\n        \n        # Vérification de conflit format/extension\n        if output_path_str != '-' and not args.quiet:\n            ext = Path(output_path_str).suffix.lower()\n            expected_ext = f\".{format_final}\"\n            if format_final == 'yaml' and ext == '.yml':\n                pass # Acceptable\n            elif ext != expected_ext:\n                print(f\"⚠️  Avertissement : Le format demandé ({format_final}) diffère de l'extension de sortie ({ext}).\", file=sys.stderr)\n\n        # Gestion de l'entrée stdin\n        if args.input == '-':\n            html_content = sys.stdin.read()\n            input_name = \"stdin\"\n        else:\n            input_path = Path(args.input)\n            if not input_path.exists():\n                print(f\"Erreur : Le fichier {args.input} n'existe pas.\", file=sys.stderr)\n                sys.exit(ExitCode.FILE_NOT_FOUND)\n            html_content = input_path.read_text(encoding=\"utf-8\")\n            input_name = input_path.name\n            \n        # Création des options\n        options = ExtractionOptions(\n            detector=args.detector,\n            format=format_final,\n            frontmatter=args.frontmatter,\n            debug=args.debug,\n            quiet=args.quiet,\n            raw=args.raw,\n            no_table=args.no_table\n        )\n        \n        try:\n            result = process_html(html_content, options)\n            \n            # Gestion du mode debug\n            if options.debug:\n                timestamp = datetime.now().strftime(\"%Y%m%d_%H%M%S\")\n                debug_dir = Path(f\"debug/ace_debug_{Path(input_name).stem}_{timestamp}\")\n                debug_dir.mkdir(parents=True, exist_ok=True)\n                \n                meta = {\n                    \"version\": \"1.1.0\",\n                    \"date\": datetime.now().isoformat(),\n                    \"input\": args.input,\n                    \"options\": options.__dict__\n                }\n                (debug_dir / \"meta.json\").write_text(json.dumps(meta, indent=2), encoding=\"utf-8\")\n                (debug_dir / \"source.html\").write_text(html_content, encoding=\"utf-8\")\n                \n                for k, v in result.debug_data.items():\n                    (debug_dir / f\"{k}.json\").write_text(json.dumps(v, indent=2), encoding=\"utf-8\")\n                \n                # Génération du rapport lisible\n                report_content = generate_report(result, meta, input_name)\n                (debug_dir / \"report.md\").write_text(report_content, encoding=\"utf-8\")\n                    \n                if not options.quiet:\n                    print(f\"Dossier de diagnostic créé : {debug_dir}\", file=sys.stderr)\n\n            # Sortie du résultat\n            if output_path_str == '-':\n                sys.stdout.write(result.content)\n            else:\n                Path(output_path_str).write_text(result.content, encoding=\"utf-8\")\n                if not options.quiet:\n                    print(f\"Conversion terminée ({format_final}) : {output_path_str}\")\n                    \n            sys.exit(ExitCode.SUCCESS)\n            \n        except Exception as e:\n            if options.debug:\n                timestamp = datetime.now().strftime(\"%Y%m%d_%H%M%S\")\n                err_dir = Path(f\"debug/ace_debug_ERROR_{Path(input_name).stem}_{timestamp}\")\n                err_dir.mkdir(parents=True, exist_ok=True)\n                (err_dir / \"error.log\").write_text(str(e))\n                import traceback\n                (err_dir / \"traceback.txt\").write_text(traceback.format_exc())\n                (err_dir / \"source.html\").write_text(html_content, encoding=\"utf-8\")\n                if not options.quiet:\n                    print(f\"Dossier de diagnostic d'erreur créé : {err_dir}\", file=sys.stderr)\n                    \n            if not options.quiet:\n                print(f\"Erreur lors de la conversion : {e}\", file=sys.stderr)\n                if options.debug:\n                    traceback.print_exc()\n            sys.exit(ExitCode.CONVERSION_ERROR)\n\n    except KeyboardInterrupt:\n        print(\"\\nInterruption détectée. Fermeture propre.\", file=sys.stderr)\n        sys.exit(ExitCode.USER_INTERRUPT)\n    except Exception as e:\n        print(f\"Erreur système fatale : {e}\", file=sys.stderr)\n        sys.exit(ExitCode.INTERNAL_ERROR)\n\nif __name__ == \"__main__\":\n    main()\n"
+}
+```
+
+**Tool Call: Read file `ace/__init__.py`**
+Status: Completed
+
+```json
+{
+  "Text": ""
+}
+```
+
+## Assistant
+
+Maintenant, lecture de tous les fichiers de tests.
+
+**Tool Call: Read file `tests/conftest.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/conftest.py\nimport pytest\nfrom pathlib import Path\n\nFIXTURES_DIR = Path(__file__).parent / \"fixtures\"\n\n@pytest.fixture\ndef grok_mermaid_html():\n    \"\"\"Fragment HTML contenant un diagramme Mermaid avec préfixe }}%% (style Grok).\"\"\"\n    return (FIXTURES_DIR / \"grok_mermaid_sample.html\").read_text(encoding=\"utf-8\")\n\n@pytest.fixture\ndef deepseek_latex_html():\n    \"\"\"Fragment HTML contenant du KaTeX/LaTeX (style DeepSeek).\"\"\"\n    return (FIXTURES_DIR / \"deepseek_latex_sample.html\").read_text(encoding=\"utf-8\")\n\n@pytest.fixture\ndef generic_chat_html():\n    \"\"\"Structure de chat simple avec deux messages (User/Assistant).\"\"\"\n    return (FIXTURES_DIR / \"generic_chat_sample.html\").read_text(encoding=\"utf-8\")\n\n@pytest.fixture\ndef ai_studio_complex_html():\n    \"\"\"Export AI Studio avec conteneurs complexes (multi-paragraphes).\"\"\"\n    return (FIXTURES_DIR / \"complex_ai_studio_sample.html\").read_text(encoding=\"utf-8\")\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_detector.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_02.py\nfrom bs4 import BeautifulSoup\nfrom ace.engine.detector import TopologicalDetector\n\ndef test_detect_turns_generic(generic_chat_html):\n    \"\"\"Vérifie que les conteneurs de messages sont correctement identifiés.\"\"\"\n    soup = BeautifulSoup(generic_chat_html, 'html.parser')\n    detector = TopologicalDetector()\n    blocks = detector.detect(soup)\n\n    # La fixture contient 2 messages (User + Assistant)\n    assert len(blocks) == 2, f\"Expected 2 turns, got {len(blocks)}\"\n\ndef test_detect_turns_ai_studio_complex(ai_studio_complex_html):\n    \"\"\"Teste sur un export AI Studio avec de nombreux wrappers.\"\"\"\n    soup = BeautifulSoup(ai_studio_complex_html, 'html.parser')\n    detector = TopologicalDetector()\n    blocks = detector.detect(soup)\n\n    # On attend au moins 2 tours\n    assert len(blocks) >= 2, \"Pas assez de tours détectés dans l'export complexe\"\n\n    # Vérification basique : chaque bloc doit contenir du texte\n    for block in blocks:\n        assert len(block.get_text(strip=True)) > 5, \"Bloc détecté presque vide\"\n\ndef test_structural_clustering():\n    \"\"\"Vérifie que le clustering regroupe les éléments de même signature.\"\"\"\n    html = \"\"\"\n    <div id=\"parent\">\n        <div class=\"msg\">Hello</div>\n        <div class=\"msg\">Hi there</div>\n        <div class=\"other\">Sidebar</div>\n    </div>\n    \"\"\"\n    soup = BeautifulSoup(html, 'html.parser')\n    detector = TopologicalDetector(min_density=1)\n    # On force la détection\n    blocks = detector.detect(soup)\n    # Devrait regrouper les deux 'msg' car ils ont la même signature\n    assert len(blocks) == 2\n    assert all('msg' in str(b) for b in blocks)\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_converter.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_04.py\nfrom bs4 import BeautifulSoup\nfrom ace.engine.converter import MarkdownDispatcher\n\ndef test_convert_paragraph():\n    html = \"<p>Un simple paragraphe.</p>\"\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('p'))\n    assert md.strip() == \"Un simple paragraphe.\"\n\ndef test_convert_table():\n    html = \"\"\"\n    <table>\n        <tr><th>A</th><th>B</th></tr>\n        <tr><td>1</td><td>2</td></tr>\n    </table>\n    \"\"\"\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('table'))\n    assert \"| A | B |\" in md\n    assert \"| 1 | 2 |\" in md\n\ndef test_preserve_sanctuary_uuids():\n    \"\"\"Les placeholders UUID ne doivent pas être modifiés.\"\"\"\n    html = \"<p>Texte avec __ACE_CODE_12345678__ intégré.</p>\"\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('p'))\n    assert \"__ACE_CODE_12345678__\" in md\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_inferencer.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_03.py\nfrom bs4 import BeautifulSoup\nfrom ace.engine.inferencer import RoleInferrer\nfrom ace.models.chat import Role\n\ndef test_infer_user_role():\n    html = '<div class=\"user-message\">Bonjour, comment ça va ?</div>'\n    soup = BeautifulSoup(html, 'html.parser')\n    tag = soup.find('div')\n    inferrer = RoleInferrer()\n    role, conf = inferrer.infer(tag, context=[])\n    assert role == Role.USER\n    assert conf > 0.5\n\ndef test_infer_model_role_with_code():\n    html = '<div class=\"assistant\"><pre><code>print(\"hello\")</code></pre></div>'\n    soup = BeautifulSoup(html, 'html.parser')\n    tag = soup.find('div')\n    inferrer = RoleInferrer()\n    role, _ = inferrer.infer(tag, context=[])\n    # La présence de code favorise fortement MODEL\n    assert role == Role.MODEL\n\ndef test_alternance_fallback():\n    \"\"\"Si aucun signal fort, doit alterner par rapport au tour précédent.\"\"\"\n    inferrer = RoleInferrer()\n    context = [type('Turn', (), {'role': Role.USER})()]\n    html = '<div>Réponse neutre</div>'\n    tag = BeautifulSoup(html, 'html.parser').find('div')\n    role, _ = inferrer.infer(tag, context)\n    assert role == Role.MODEL\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_regex.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_00.py\nimport pytest\n\ndef test_import_models():\n    \"\"\"Vérifie que les modèles de données sont importables sans erreur.\"\"\"\n    try:\n        from ace.models.chat import Role, ContentType, MessagePart, Turn, ChatSession\n    except ImportError as e:\n        pytest.fail(f\"Import failed: {e}\")\n\ndef test_role_enum():\n    from ace.models.chat import Role\n    assert Role.USER.value == \"user\"\n    assert Role.MODEL.value == \"model\"\n    assert Role.SYSTEM.value == \"system\"\n\ndef test_create_turn():\n    from ace.models.chat import Turn, Role\n    turn = Turn(index=0, role=Role.USER, content=[], confidence=0.9)\n    assert turn.index == 0\n    assert turn.role == Role.USER\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_sanctuary_a.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_01a.py\nimport re\nfrom bs4 import BeautifulSoup\nfrom ace.core.sanctuary import SanctuaryManager\n\ndef test_extract_code_basic():\n    html = \"\"\"\n    <div>\n        <pre><code>print(\"Hello, world!\")</code></pre>\n    </div>\n    \"\"\"\n    soup = BeautifulSoup(html, 'html.parser')\n    manager = SanctuaryManager()\n    mapping = manager.extract(soup)\n\n    # Vérifier qu'un UUID a été généré\n    assert len(mapping) == 1\n    uuid_placeholder = list(mapping.keys())[0]\n    assert re.match(r'__ACE_CODE_[a-f0-9]{8}__', uuid_placeholder)\n\n    # Vérifier que le contenu extrait est le code Python\n    entry = mapping[uuid_placeholder]\n    assert 'print(\"Hello, world!\")' in entry.raw_content\n\n    # Vérifier que le placeholder est dans le DOM\n    assert uuid_placeholder in str(soup)\n\ndef test_restore_code():\n    markdown_text = \"Voici le code :\\n__ACE_CODE_12345678__\\nFin.\"\n    mapping = {\n        \"__ACE_CODE_12345678__\": type('Entry', (), {'formatted_content': '```python\\nprint(\"Hello\")\\n```'})()\n    }\n    manager = SanctuaryManager()\n    restored = manager.restore(markdown_text, mapping)\n    assert \"```python\" in restored\n    assert \"print(\\\"Hello\\\")\" in restored\n    assert \"__ACE_CODE_\" not in restored\n"
+}
+```
+
+**Tool Call: Read file `tests/unit/test_sanctuary_b.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_01b.py\nimport re\nfrom bs4 import BeautifulSoup\nfrom ace.core.sanctuary import SanctuaryManager\n\ndef test_extract_mermaid_grok(grok_mermaid_html):\n    \"\"\"Teste l'extraction d'un diagramme Mermaid avec préfixe }}%% (export Grok).\"\"\"\n    soup = BeautifulSoup(grok_mermaid_html, 'html.parser')\n    manager = SanctuaryManager()\n    mapping = manager.extract(soup)\n\n    # Au moins une entrée Mermaid doit être trouvée\n    mermaid_uuids = [uid for uid, entry in mapping.items() if entry.type == \"mermaid\"]\n    assert len(mermaid_uuids) == 1, \"Aucun diagramme Mermaid extrait\"\n\n    entry = mapping[mermaid_uuids[0]]\n    # Vérifier que le contenu commence par un mot-clé Mermaid (après nettoyage)\n    cleaned = re.sub(r'^(}}%%|%%{.*?}%%)', '', entry.raw_content).strip()\n    assert cleaned.startswith(('graph', 'flowchart', 'sequenceDiagram')), \\\n        f\"Contenu extrait: {entry.raw_content[:100]}\"\n\ndef test_extract_latex_deepseek(deepseek_latex_html):\n    \"\"\"Teste l'extraction de LaTeX (KaTeX) dans un export DeepSeek.\"\"\"\n    soup = BeautifulSoup(deepseek_latex_html, 'html.parser')\n    manager = SanctuaryManager()\n    mapping = manager.extract(soup)\n\n    math_uuids = [uid for uid, entry in mapping.items() if entry.type == \"math\"]\n    assert len(math_uuids) >= 1, \"Aucune formule mathématique extraite\"\n\n    # Vérifier que le contenu contient des délimiteurs LaTeX\n    entry = mapping[math_uuids[0]]\n    assert '$' in entry.formatted_content or '\\\\(' in entry.raw_content\n\ndef test_restore_mermaid():\n    markdown = \"Avant\\n__ACE_MERM_abcdef12__\\nAprès\"\n    mapping = {\n        \"__ACE_MERM_abcdef12__\": type('Entry', (), {\n            'type': 'mermaid',\n            'formatted_content': '```mermaid\\ngraph TD\\nA-->B\\n```'\n        })()\n    }\n    manager = SanctuaryManager()\n    restored = manager.restore(markdown, mapping)\n    assert \"```mermaid\" in restored\n    assert \"graph TD\" in restored\n"
+}
+```
+
+**Tool Call: Read file `tests/integration/test_end_to_end.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_atom_05.py\nfrom ace.main import process_html\nfrom ace.models.chat import ChatSession\n\ndef test_end_to_end_generic(generic_chat_html):\n    \"\"\"Test complet de l'extraction jusqu'au Markdown.\"\"\"\n    result = process_html(generic_chat_html)\n    content = result.content\n    assert \"## User\" in content or \"## MODEL\" in content\n    assert \"Bonjour\" in content\n\ndef test_end_to_end_preserves_mermaid(grok_mermaid_html):\n    \"\"\"Vérifie que le diagramme Mermaid est intact en sortie.\"\"\"\n    result = process_html(grok_mermaid_html)\n    content = result.content\n    assert \"```mermaid\" in content\n    assert \"graph TD\" in content\n"
+}
+```
+
+**Tool Call: Read file `tests/integration/test_v1_1_0.py`**
+Status: Completed
+
+```json
+{
+  "Text": "# tests/test_v1_1_0.py\nfrom bs4 import BeautifulSoup\nfrom ace.engine.converter import MarkdownDispatcher\nfrom ace.main import process_html\n\ndef test_convert_blockquote():\n    html = \"<blockquote>Citation</blockquote>\"\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('blockquote'))\n    assert md.strip() == \"> Citation\"\n\ndef test_convert_link():\n    html = '<a href=\"https://example.com\">Lien</a>'\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('a'))\n    assert md.strip() == \"[Lien](https://example.com)\"\n\ndef test_convert_image():\n    html = '<img src=\"img.png\" alt=\"Alt\">'\n    soup = BeautifulSoup(html, 'html.parser')\n    dispatcher = MarkdownDispatcher()\n    md = dispatcher.convert(soup.find('img'))\n    assert md.strip() == \"![Alt](img.png)\"\n\ndef test_v1_1_0_pipeline_fidelity():\n    \"\"\"Vérifie que le pipeline complet traite correctement les nouveaux éléments.\"\"\"\n    html = \"\"\"\n    <div class=\"message\">\n        <blockquote>Expert ACE.</blockquote>\n        <p>Visitez <a href=\"https://ace.ai\">notre site</a> et voyez <img src=\"icon.png\" alt=\"Logo\"></p>\n    </div>\n    \"\"\"\n    result = process_html(html)\n    content = result.content\n    \n    assert \"> Expert ACE.\" in content\n    assert \"[notre site](https://ace.ai)\" in content\n    assert \"![Logo](icon.png)\" in content\n    assert \"Expert ACE.\" in result.session.turns[0].content[0].content\n"
+}
+```
+
+## Assistant
+
+Maintenant, lecture des fixtures HTML pour évaluer leur complexité réelle.
+
+**Tool Call: Read file `tests/fixtures/generic_chat_sample.html`**
+Status: Completed
+
+```json
+{
+  "Text": "<div class=\"chat\">\n    <div class=\"message user\">\n        <div class=\"content\">Bonjour, peux-tu m'aider ?</div>\n    </div>\n    <div class=\"message assistant\">\n        <div class=\"content\">Bien sûr, que voulez-vous savoir ?</div>\n    </div>\n</div>\n"
+}
+```
+
+**Tool Call: Read file `tests/fixtures/grok_mermaid_sample.html`**
+Status: Completed
+
+```json
+{
+  "Text": "<div class=\"message\">\n    <div class=\"markdown\">\n        <p>}}%% graph TD<br>    A[Start] --> B{Decision}<br>    B -->|Yes| C[OK]<br>    B -->|No| D[KO]</p>\n    </div>\n</div>\n"
+}
+```
+
+**Tool Call: Read file `tests/fixtures/deepseek_latex_sample.html`**
+Status: Completed
+
+```json
+{
+  "Text": "<div class=\"ds-message\">\n    <p>L'équation est <span class=\"katex\"><span class=\"katex-mathml\"><math><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding=\"application/x-tex\">E = mc^2</annotation></semantics></math></span></span>.</p>\n</div>\n"
+}
+```
+
+**Tool Call: Read file `tests/fixtures/complex_ai_studio_sample.html`**
+Status: Completed
+
+```json
+{
+  "Text": "<!-- Extrait simplifié d'un export AI Studio avec wrappers multiples -->\n<ms-chat-turn>\n    <ms-chat-message role=\"user\">\n        <div class=\"message-content\">\n            <p>Première question</p>\n            <p>Deuxième ligne</p>\n        </div>\n    </ms-chat-message>\n</ms-chat-turn>\n<ms-chat-turn>\n    <ms-chat-message role=\"model\">\n        <div class=\"message-content\">\n            <p>Réponse avec plusieurs paragraphes</p>\n            <p>Et encore du texte</p>\n        </div>\n    </ms-chat-message>\n</ms-chat-turn>\n"
+}
+```
+
+**Tool Call: Read file `pyproject.toml`**
+Status: Completed
+
+```json
+{
+  "Text": "[project]\nname = \"ace\"\nversion = \"0.1.0\"\ndescription = \"Adaptive Chat Extractor - Une solution universelle pour l'extraction de conversations HTML.\"\nrequires-python = \">=3.9\"\ndependencies = [\n    \"beautifulsoup4\",\n    \"PyYAML\",\n]\n\n[project.optional-dependencies]\ndev = [\n    \"pytest\",\n]\n\n[project.scripts]\nace = \"ace.cli:main\"\n\n[tool.setuptools]\npackages = [\"ace\"]\n\n[build-system]\nrequires = [\"setuptools>=61.0\"]\nbuild-backend = \"setuptools.build_meta\"\n"
+}
+```
+
+## Assistant
+
+J'ai maintenant toutes les données nécessaires. Je vais produire l'audit complet.
+
+---
+
+# Rapport d'Audit Forensique — ACE (Adaptive Chat Extractor)
+**Périmètre analysé** : `ace/` + `tests/` | **Exclus** : `docs/`, `legacy/`, `scripts/`
+
+---
+
+## 1. Résumé Exécutif
+
+ACE est un outil CLI Python qui parse des exports HTML de conversations LLM (ChatGPT, Claude, DeepSeek, Grok, AI Studio) et les convertit en Markdown, JSON ou YAML. L'architecture est stratifiée en cinq couches : protection des blocs complexes (Sanctuaire), détection des tours de conversation (deux moteurs + validateur), inférence des rôles, conversion Markdown, et sérialisation.
+
+Le code est structurellement cohérent et lisible. Cependant, l'audit révèle **quatre défauts systémiques graves** : un moteur de détection topologique non fonctionnel dans sa prétention centrale, un validateur qui invalide son propre fallback de sécurité, un système d'inférence de rôles sous-spécifié au point de produire des sorties déterministes fausses, et une suite de tests construite sur des fixtures synthétiques triviales qui ne valide aucune propriété réelle du système.
+
+---
+
+## 2. Intentions Déduites
+
+**[Fait Observé]** Le pipeline `process_html` dans `main.py` orchestre six étapes séquentielles : parse HTML → sanctuarisation → détection de blocs → validation → inférence de rôle → conversion Markdown/JSON/YAML.
+`ACE->OCR/ace/main.py:L1-130`
+
+**[Fait Observé]** `ExtractionOptions.detector` accepte trois valeurs : `"topo"`, `"heuristic"`, `"flux"`. Le mode `"flux"` est référencé dans le CLI (`cli.py:L40`) et dans `print_strategies_help()` (`cli.py:L60-68`) mais **aucun `FluxDetector` n'existe dans le périmètre analysé**.
+`ACE->OCR/ace/cli.py:L40`
+`ACE->OCR/ace/models/chat.py:L28`
+
+**[Fait Observé]** L'intention déclarée est d'être « agnostique et universel » (`cli.py:L15`). Le code implémente des signaux spécifiques à : ChatGPT (`data-message-author-role`), DeepSeek (classe `ds-message` dans la fixture), Grok (préfixe `}}%%`), AI Studio (tags `ms-chat-turn`/`ms-chat-message`). Cette universalité est **partiellement implémentée**, non démontrée de façon exhaustive.
+
+**[Inférence Logique]** Le `SanctuaryManager` vise à isoler les blocs structurellement sensibles (code, LaTeX, Mermaid) avant la conversion pour éviter leur corruption par le `MarkdownDispatcher`. C'est le mécanisme le plus cohérent et le mieux testé du système.
+
+---
+
+## 3. Frontière Validée vs Supposée
+
+### ✅ Ce qui est prouvé par les tests
+
+| Propriété | Source | IC |
+|---|---|---|
+| Les modèles de données (`Role`, `Turn`, `ChatSession`) sont instanciables | `test_regex.py` (test_atom_00) | 9/10 |
+| L'extraction d'un `<pre><code>` produit un UUID `__ACE_CODE_*__` | `test_sanctuary_a.py:L6-30` | 9/10 |
+| La restauration d'un UUID vers son contenu formaté fonctionne | `test_sanctuary_a.py:L32-42` | 9/10 |
+| Un tag `class="user-message"` est classifié `Role.USER` | `test_inferencer.py:L6-15` | 8/10 |
+| Un tag `<pre><code>` sans classe `user` est classifié `Role.MODEL` | `test_inferencer.py:L17-26` | 7/10 |
+| `<blockquote>`, `<a>`, `<img>` sont convertis correctement | `test_v1_1_0.py:L6-28` | 9/10 |
+| Le Mermaid Grok (`}}%%`) est extrait et le bloc `mermaid` survit jusqu'à la sortie | `test_sanctuary_b.py` + `test_end_to_end.py:L13-17` | 8/10 |
+
+### ⚠️ Ce qui est seulement implémenté (non prouvé)
+
+**[Fait Observé]** Le détecteur `"flux"` est documenté et exposé en CLI mais n'existe pas dans `ace/engine/`. Aucune classe, aucun module, aucun import. L'option `--flux` passe `detector="flux"` à `ExtractionOptions`, qui ne correspond à aucune branche dans `main.py:L50-68`. Le code tombe silencieusement dans le bloc `else` (mode hybride auto).
+`ACE->OCR/ace/main.py:L50-68`
+`ACE->OCR/ace/cli.py:L40`
+
+**[Fait Observé]** Le mode hybride auto (`detector="auto"` / `else`) existe dans `main.py` mais `ExtractionOptions.detector` est initialisé à `"topo"` par défaut, jamais à `"auto"`. La branche hybride n'est atteignable que si l'utilisateur passe une valeur inconnue à `--detector`, ou via un appel Python direct.
+`ACE->OCR/ace/models/chat.py:L28`
+`ACE->OCR/ace/main.py:L50-52`
+
+**[Fait Observé]** `LATEX_INLINE_RE` et `LATEX_BLOCK_RE` sont définis dans `regex.py` mais ne sont importés et utilisés nulle part dans le périmètre analysé.
+`ACE->OCR/ace/utils/regex.py:L17-19`
+
+**[Fait Observé]** `ContentType` définit `MATH_INLINE`, `MATH_BLOCK`, `TABLE`, `IMAGE` — aucun de ces types n'est jamais assigné à un `MessagePart`. Toute la production se fait avec `ContentType.TEXT`.
+`ACE->OCR/ace/models/chat.py:L11-17`
+`ACE->OCR/ace/main.py:L98`
+
+**[Fait Observé]** `UI_LABELS_PATTERN` dans `regex.py` n'est importé nulle part dans le périmètre analysé. Les labels UI (`"vous avez dit :"`, `"ChatGPT a dit :"`) ne sont jamais supprimés du contenu extrait.
+`ACE->OCR/ace/utils/regex.py:L3-10`
+
+**[Fait Observé]** `dom.py` exporte trois fonctions (`get_clean_text`, `is_ui_element`, `is_empty_node`) qui ne sont importées par aucun module source dans `ace/`.
+`ACE->OCR/ace/utils/dom.py`
+
+### ❌ Ce qui est contredit, fragile ou non démontré
+
+**[Fait Observé]** `test_structural_clustering` dans `test_detector.py:L27-38` affirme que le `TopologicalDetector` regroupera les deux `<div class="msg">` et retournera `len(blocks) == 2`. Or, `TopologicalDetector.detect()` retourne **un seul cluster** (le `best_cluster`, étape 4, `detector.py:L118`). La valeur attendue `== 2` teste donc une propriété que la conception du moteur **interdit structurellement**.
+`ACE->OCR/ace/engine/detector.py:L118`
+`ACE->OCR/tests/unit/test_detector.py:L27-38`
+
+**[Fait Observé]** `test_detect_turns_generic` exige `len(blocks) == 2` avec la fixture `generic_chat_sample.html`, qui contient exactement deux `<div class="message">`. Le `TopologicalDetector` retourne un seul cluster. Ce test **échoue structurellement** si le detector fonctionne selon son propre code.
+`ACE->OCR/ace/engine/detector.py:L118`
+`ACE->OCR/tests/fixtures/generic_chat_sample.html`
+
+**[Fait Observé]** `ExtractionValidator.is_valid()` rejette tout ensemble de blocs où tous les rôles inférés sont identiques (`validator.py:L52-58`). Or, `RoleInferrer` classe par défaut tout bloc sans signal fort comme `Role.USER` (confidence 0.4). Si les blocs extraits n'ont pas de classe CSS explicite, **tous** seront classifiés USER, le validateur rejettera la détection, et le fallback `body` sera déclenché — effaçant la distinction sémantique.
+`ACE->OCR/ace/engine/validator.py:L46-58`
+`ACE->OCR/ace/engine/inferencer.py:L37-40`
+
+---
+
+## 4. Delta Intention / Capacité
+
+### Défaut #1 — Le TopologicalDetector est architecturalement incompatible avec ses propres tests (P0)
+
+**[Fait Observé]** `TopologicalDetector.detect()` retourne toujours une `List[Tag]` plate — le contenu d'**un seul cluster** sélectionné comme champion. La sémantique du retour est « les éléments du meilleur cluster », pas « un cluster par tour ».
+`ACE->OCR/ace/engine/detector.py:L118`
+
+**[Inférence Logique]** En mode hybride ou forcé-topo, `main.py` itère sur `blocks` et crée un `Turn` par élément (`main.py:L88-100`). Si le meilleur cluster contient N éléments de même parent (ex : N paragraphes d'un même message), cela créera N tours au lieu d'un — multiplication silencieuse des tours.
+
+**[Inférence Logique]** Si le meilleur cluster est un bloc unique (un gros `<div>` englobant), une seule conversation entière sera produite en un seul `Turn` — écrasement total de la structure.
+
+**[Hypothèse Rejetée]** Il ne s'agit pas d'un bug d'implémentation isolé : la logique de scoring favorise explicitement la profondeur (`granularity = avg_depth / 10.0`, `detector.py:L72`) et les blocs avec UUID (bonus ×1.5, `detector.py:L81`). Cette pondération n'a aucune validation empirique dans les tests.
+`ACE->OCR/ace/engine/detector.py:L68-84`
+
+---
+
+### Défaut #2 — Le `"flux"` detector est un fantôme référencé (P0)
+
+**[Fait Observé]** `--flux` est documenté (`cli.py:L40`, `cli.py:L64`), présent dans `ExtractionOptions` comme valeur valide, mais non implémenté. Toute invocation `ace --flux fichier.html` tombe dans la branche `else` (hybride auto), qui elle-même n'est jamais atteinte en usage normal (default `"topo"`). Ce chemin de code est donc doublement inatteignable.
+`ACE->OCR/ace/cli.py:L40,L64`
+`ACE->OCR/ace/main.py:L50-68`
+
+---
+
+### Défaut #3 — Le Validateur invalide la détection correcte (P0)
+
+**[Fait Observé]** `ExtractionValidator.is_valid()` rejette un résultat si `len(roles) == 1` (tous les blocs ont le même rôle inféré). Pour une page où les blocs de contenu n'ont pas de classe CSS `user`/`assistant` explicite (cas courant pour les formats HTML personnalisés ou minimaux), `RoleInferrer` retourne `Role.USER` pour tous (confidence 0.4). Le validateur rejette alors la détection valide et déclenche le fallback `body`.
+`ACE->OCR/ace/engine/validator.py:L46-58`
+`ACE->OCR/ace/engine/inferencer.py:L37-40`
+
+**[Inférence Logique]** Ce comportement transforme silencieusement une extraction correcte de N tours en un unique tour `Role.USER` contenant la totalité du `<body>`. Le fallback `body` est présenté comme « sécurité absolue » (`main.py:L72`), mais c'est une perte totale de structure, sans avertissement différencié selon que l'échec vient de la détection ou de la validation.
+`ACE->OCR/ace/main.py:L70-78`
+
+---
+
+### Défaut #4 — Le système d'inférence de rôle est un classifieur binaire fragile (P1)
+
+**[Fait Observé]** `RoleInferrer` ne consulte le contexte d'alternance que si `user_score == model_score` (égalité exacte, `inferencer.py:L32-38`). La présence d'un simple `<pre><code>` dans n'importe quel bloc force `model_score += 2.0` et brise l'alternance. Une conversation USER / USER-avec-code / USER sera incorrectement classifiée USER / MODEL / USER.
+`ACE->OCR/ace/engine/inferencer.py:L26-38`
+
+**[Fait Observé]** `model_signals` contient `'ai'` comme sous-chaîne. Toute classe CSS contenant `"ai"` (ex : `"trail"`, `"detail"`, `"email"`, `"main"`) déclenche `model_score += 5.0`. Aucun test ne couvre ce cas.
+`ACE->OCR/ace/engine/inferencer.py:L6`
+
+**[Fait Observé]** `user_signals` contient `'you'`. Toute classe CSS contenant la séquence `"you"` (ex : `"layout"`, `"your-profile"`) déclenche `user_score += 5.0`.
+`ACE->OCR/ace/engine/inferencer.py:L5`
+
+---
+
+### Défaut #5 — Les fixtures de test sont synthétiques triviales (P1)
+
+**[Fait Observé]** `generic_chat_sample.html` est 8 lignes, sans `<body>`, sans `<head>`, sans classes de profondeur, sans ambiguïté structurelle. `grok_mermaid_sample.html` encode le graphe Mermaid dans un `<p>` avec des `<br>` au lieu de vraies lignes — ce qui n'est pas représentatif du HTML produit par Grok.
+`ACE->OCR/tests/fixtures/generic_chat_sample.html`
+`ACE->OCR/tests/fixtures/grok_mermaid_sample.html`
+
+**[Fait Observé]** `complex_ai_studio_sample.html` utilise des tags custom (`<ms-chat-turn>`, `<ms-chat-message role="user">`) qui ne correspondent à aucune sonde du `HeuristicDetector`. La `DataAttributeProbe` cherche `data-message-author-role`, pas l'attribut `role`. La `SemanticClassProbe` cherche des classes CSS. Aucune sonde ne gère les attributs `role` HTML5 natifs sur des tags custom.
+`ACE->OCR/ace/engine/heuristic.py:L18-36`
+`ACE->OCR/tests/fixtures/complex_ai_studio_sample.html`
+
+**[Inférence Logique]** Les tests d'intégration `test_end_to_end_generic` et `test_end_to_end_preserves_mermaid` ne vérifient que la présence de chaînes (`"## User"`, `` "```mermaid" ``) dans le contenu de sortie. Ils ne valident pas le nombre de tours, leur ordre, la fidélité du contenu, ni l'absence de régression sur le rôle. Ce sont des tests de fumée, non des tests de régression.
+`ACE->OCR/tests/integration/test_end_to_end.py:L6-17`
+
+---
+
+### Défaut #6 — Collision MD5 non gérée dans le Sanctuaire (P2)
+
+**[Fait Observé]** `_generate_uuid` utilise `hashlib.md5(content.encode()).hexdigest()[:8]` — soit 8 caractères hexadécimaux = 32 bits. La probabilité de collision après ~65 000 blocs atteint 50% (paradoxe des anniversaires). Pour un document avec du code répété (ex : plusieurs blocs identiques), la collision est **certaine** : deux blocs différents à contenu identique produisent le même UUID, le second écrase silencieusement le premier dans `self.mapping`.
+`ACE->OCR/ace/core/sanctuary.py:L26-28`
+
+**[Fait Observé]** Aucun test ne couvre le cas de deux blocs `<pre><code>` avec un contenu identique.
+
+---
+
+### Défaut #7 — `_handle_li` génère toujours `"1. "` pour les `<ol>` (P2)
+
+**[Fait Observé]** `_handle_li` dans le `MarkdownDispatcher` utilise `prefix = "1. "` pour tous les éléments d'une `<ol>`, sans incrémenter. Le Markdown GFM accepte cela avec des parseurs compatibles, mais c'est sémantiquement incorrect pour les numéros réels et produit `1. ... 1. ... 1. ...` en sortie brute.
+`ACE->OCR/ace/engine/converter.py:L67-71`
+
+---
+
+### Défaut #8 — Mermaid : nettoyage regex inversé (P2)
+
+**[Fait Observé]** Dans `SanctuaryManager.extract()`, le nettoyage du préfixe Mermaid est :
+`raw_mermaid = re.sub(r'^(?:}}%%|%%{.*?\}%%)', '', text).strip()`
+Le pattern `}}%%` est le préfixe à retirer selon la fixture Grok. Mais dans `MERMAID_DETECTION_RE`, le pattern de détection est `r'^\s*(?:}}%%|%%{.*?\}%%)?'`. Ces deux patterns sont cohérents. Cependant, `raw_mermaid` dans `sanctuary.py` est calculé sur `text = tag.get_text()` (le texte brut du `<p>` avec les `<br>` collapsés), pas sur le texte ligne par ligne — les sauts de ligne sont perdus, le diagramme devient une seule ligne aplatie dans la fixture.
+`ACE->OCR/ace/core/sanctuary.py:L61-65`
+`ACE->OCR/tests/fixtures/grok_mermaid_sample.html`
+
+---
+
+## 5. Recommandations Priorisées
+
+### P0 — Critique (bloquant la correction fonctionnelle)
+
+**P0-A : Corriger la sémantique de retour du `TopologicalDetector`.**
+Le détecteur retourne les éléments d'un cluster plat. Soit on le fait retourner `List[List[Tag]]` (un cluster = un tour, cohérent avec la conception), soit `main.py` doit traiter les éléments d'un cluster comme les parties d'un seul `Turn`. Sans ce choix explicite, la multiplication ou l'écrasement des tours est non déterministe.
+
+**P0-B : Supprimer ou implémenter le mode `"flux"`.**
+Retirer `--flux` de la CLI et `"flux"` de l'aide tant qu'aucun `FluxDetector` n'est implémenté, ou implémenter `FluxDetector` en exposant `StructuralSeparatorProbe` déjà existante dans `heuristic.py` comme moteur dédié.
+`ACE->OCR/ace/engine/heuristic.py:L73-88`
+
+**P0-C : Corriger le biais du `ExtractionValidator` sur les rôles.**
+Le rejet `len(roles) == 1` doit être conditionné à une vérification que le `RoleInferrer` a agi sur signal fort (confidence > 0.5), pas sur alternance par défaut. Un bloc de 5 messages tous classés USER avec confidence 0.4 ne doit pas invalider la détection — il doit déclencher un avertissement de confiance faible.
+
+**P0-D : Corriger le défaut d'accessibilité du mode hybride.**
+`ExtractionOptions.detector` doit exposer `"auto"` comme valeur valide et le CLI doit proposer `--auto` pour atteindre la branche hybride. Alternativement, définir `"auto"` comme défaut au lieu de `"topo"`.
+
+---
+
+### P1 — Majeur (impact sur la qualité de l'extraction)
+
+**P1-A : Corriger les faux positifs de sous-chaîne dans `RoleInferrer`.**
+Remplacer les comparaisons `if sig in class_str` par des correspondances de mots complets : `re.search(rf'\b{sig}\b', class_str)`. Les signaux `'ai'` et `'you'` sont particulièrement dangereux.
+`ACE->OCR/ace/engine/inferencer.py:L16-22`
+
+**P1-B : Construire des fixtures réalistes.**
+Les fixtures doivent inclure : un `<html><body>` complet, une navigation UI (`<nav>`, `<footer>`), des classes CSS à nombres (autogénérées), et au minimum 6 tours alternés avec du contenu substantiel. Les exports réels de ChatGPT, Claude, et AI Studio ont des structures de DOM nettement plus profondes que les 3 niveaux actuels.
+
+**P1-C : Connecter `UI_LABELS_PATTERN`, `dom.py`, et `LATEX_INLINE_RE`.**
+Ces utilitaires sont morts. Les supprimer du périmètre ou les intégrer — `UI_LABELS_PATTERN` en post-processing dans `main.py` après `sanctuary.restore()`, `is_ui_element` dans le filtre de candidats du `TopologicalDetector`.
+
+---
+
+### P2 — Secondaire (robustesse et conformité)
+
+**P2-A : Remplacer le hash MD5 tronqué à 8 chars par `uuid.uuid4().hex[:12]`** pour éliminer les collisions déterministes sur contenu identique.
+`ACE->OCR/ace/core/sanctuary.py:L26-28`
+
+**P2-B : Implémenter le compteur pour `<ol>`** dans `_handle_li` : maintenir un compteur d'index par liste ou utiliser `enumerate` sur les `<li>` frères.
+`ACE->OCR/ace/engine/converter.py:L67-71`
+
+**P2-C : Aligner la version CLI avec `pyproject.toml`.**
+`cli.py:L80` affiche `version='%(prog)s 1.1.0'` ; `pyproject.toml` déclare `version = "0.1.0"`. Incohérence d'identité de version.
+`ACE->OCR/ace/cli.py:L80`
+`ACE->OCR/pyproject.toml:L3`
+
+**P2-D : Gérer l'aplatissement des `<br>` dans l'extraction Mermaid Grok.**
+`tag.get_text()` collapse les `<br>` en espace. Utiliser `tag.get_text(separator='\n')` pour les `<p>` contenant des `<br>` avant extraction.
+`ACE->OCR/ace/core/sanctuary.py:L60`
+
+---
+
+> **Synthèse** : Le système possède une architecture intentionnellement bien conçue — la séparation Sanctuaire / Détection / Validation / Inférence / Conversion est saine. Les défauts identifiés ne sont pas des erreurs de conception de haut niveau, mais des **ruptures de contrat précises** : un retour de type mal défini (P0-A), une fonctionnalité documentée inexistante (P0-B), un validateur qui détruit ce qu'il est censé filtrer (P0-C), et une suite de tests qui ne teste que les chemins sans friction. Aucun de ces défauts n'est irrémédiable.
+
+## User
+
+**Verdict global** : L'audit est solide à ~75%. Il identifie de vraies failles et les source correctement. Mais il contient **une erreur critique** qui invalide son P0 le plus fort, et deux omissions importantes.
+
+---
+
+## Erreur Critique — P0-A est structurellement faux
+
+L'audit affirme :
+
+> [test_structural_clustering](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/tests/unit/test_detector.py:26:0-41:47) exige `len(blocks) == 2` mais [detect()](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/heuristic.py:128:4-139:17) retourne **un seul cluster** → test "échoue structurellement"
+
+**C'est faux.** [detect()](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/heuristic.py:128:4-139:17) retourne `best_cluster` qui est un `List[Tag]` — les *éléments* du cluster gagnant, pas un objet cluster unique. Sur la fixture `[msg1, msg2, sidebar]` :
+
+- [_merge_sequential_candidates](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/detector.py:106:4-132:23) produit : `[[msg1, msg2], [sidebar]]` — les deux `msg` fusionnent (même parent, même classe).
+- `best_cluster = [msg1, msg2]` → `return [msg1, msg2]`
+- `len(blocks) == 2` → **VRAI**
+
+**Preuve directe** : `pytest` retourne **23/23 PASS**. Si P0-A était vrai, au moins [test_structural_clustering](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/tests/unit/test_detector.py:26:0-41:47) et [test_detect_turns_generic](cci:1://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/tests/unit/test_detector.py:4:0-11:67) échoueraient. Ce n'est pas le cas.
+
+L'audit a confondu "retourner un seul cluster" (l'objet `List[List[Tag]]` réduit à un champion) avec "retourner une liste d'un seul élément". Ce sont deux choses différentes. IC du P0-A : **1/10**.
+
+La **vraie** problématique architecturale (qu'il effleure sans la formuler) est inverse : [main.py](cci:7://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/main.py:0:0-0:0) crée **un Turn par Tag dans `blocks`**. Si le cluster gagnant contient des sous-éléments d'un même message (paragraphes d'une même réponse), on produit N tours au lieu d'un. Ce n'est pas documenté dans l'audit — c'est un défaut distinct et réel.
+
+---
+
+## Ce qui est confirmé correct
+
+| Défaut | Vérifié | IC |
+|--------|---------|-----|
+| Mode `flux` inexistant | `ace/main.py:L50-68` — aucune branche `flux` | 10/10 |
+| Hybrid auto unreachable (default "topo") | `models/chat.py:L48`, `main.py:L51` | 10/10 |
+| Validator rejet sur `len(roles)==1` | `validator.py:L57` + `inferencer.py:L37-40` | 10/10 |
+| Sous-chaîne `'ai'`/`'you'` dans inferencer | `inferencer.py:L5-6` | 10/10 |
+| `UI_LABELS_PATTERN`, `dom.py`, `LATEX_*_RE` morts | Aucun import croisé dans `ace/` | 10/10 |
+| [ContentType](cci:2://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/models/chat.py:11:0-18:19) jamais utilisé (toujours TEXT) | `main.py:L98` | 10/10 |
+| Version `1.1.0` vs `0.1.0` | `cli.py:L80` / `pyproject.toml:L3` | 10/10 |
+| MD5 8 chars → collision déterministe | `sanctuary.py:L26-28` | 9/10 |
+| `<ol>` → toujours `"1. "` | `converter.py:L67-71` | 10/10 |
+| Grok `<br>` aplati | `sanctuary.py:L60` + fixture | 8/10 |
+| Fixtures synthétiques triviales | Tailles fichiers + structure | 10/10 |
+
+---
+
+## Deux omissions importantes
+
+**1. Le mode hybride est inaccessible** — l'audit le dit (P0-D) mais manque une conséquence directe : le [HeuristicDetector](cci:2://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/heuristic.py:115:0-139:17) n'est **jamais appelé** en usage normal (default `"topo"`). Tout le code [heuristic.py](cci:7://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/heuristic.py:0:0-0:0) est mort en production standard. Seul le [TopologicalDetector](cci:2://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/detector.py:5:0-181:27) fonctionne via `-t`/`--topo`.
+
+**2. [ExtractionValidator](cci:2://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/validator.py:4:0-69:19) n'est appelé que dans le mode hybride** — donc lui aussi est mort en usage default. Les défauts P0-C, bien que réels, ne se déclenchent **jamais** avec `ace fichier.html` par défaut. L'audit le signale sans souligner cette conséquence : les 4 défauts P0 n'en forment réellement qu'**un seul** (le mode hybrid est mort = tous ses composants sont morts).
+
+---
+
+## Note finale
+
+L'audit a produit ~12 défauts réels, bien sourcés, avec des IC cohérents. Son erreur majeure (P0-A) est analytique, pas factuelle — il a mal lu la sémantique du retour. Un bon audit aurait dû exécuter les tests avant de conclure qu'ils "échouent structurellement".
+
+## Assistant
+
+Correction reçue et intégralement acceptée. Voici l'analyse révisée point par point.
+
+---
+
+## Rétractation P0-A — Analyse de l'erreur commise
+
+**[Fait Observé — Correction]** `detect()` retourne `best_cluster` qui est la valeur de `clusters[i]`, soit une `List[Tag]`. Les éléments de cette liste sont les nœuds individuels du cluster gagnant — pas le cluster comme objet conteneur.
+`ACE->OCR/ace/engine/detector.py:L118`
+
+J'ai confondu deux niveaux de la structure :
+
+```ACE->OCR/ace/engine/detector.py#L103-118
+clusters = []          # List[List[Tag]]
+# ...
+clusters.append([current])   # chaque cluster est une List[Tag]
+# ...
+best_cluster = max(final_clusters, ...)  # best_cluster : List[Tag]
+return best_cluster           # retourne les éléments, pas un objet singleton
+```
+
+Sur la fixture `[msg1, msg2, sidebar]` :
+- `_merge_sequential_candidates` produit `[[msg1, msg2], [sidebar]]` car `msg1` et `msg2` partagent le même parent et la même classe — `_are_compatible_for_merge` retourne `True`
+- `best_cluster = [msg1, msg2]`
+- `return [msg1, msg2]` → `len(blocks) == 2` ✓
+
+**La conclusion "échoue structurellement" était fausse.** L'erreur est analytique : j'ai raisonné sur le type de retour sans tracer l'exécution sur les données concrètes. Un audit code-first qui ne simule pas le flux sur les fixtures ne peut pas conclure sur l'échec d'un test. IC P0-A initial : **1/10**, conforme au verdict.
+
+---
+
+## Reformulation du vrai défaut architectural sous-jacent
+
+**[Fait Observé — Reformulé]** Le vrai problème n'est pas que `detect()` retourne un élément unique — c'est que `main.py` crée **un `Turn` par `Tag`** dans `blocks`, sans aucune logique de regroupement intra-message.
+`ACE->OCR/ace/main.py:L88-100`
+
+```ACE->OCR/ace/main.py#L88-100
+for i, block in enumerate(blocks):
+    role, confidence = inferrer.infer(block, context=session.turns)
+    md_content = dispatcher.convert(block)
+    # ...
+    turn = Turn(index=i, role=role, content=[part], confidence=confidence)
+    session.turns.append(turn)
+```
+
+**[Inférence Logique]** Si le cluster gagnant contient `[p1, p2, p3]` — trois paragraphes issus d'une même réponse modèle — le pipeline produit trois `Turn` distincts avec trois inférences de rôle indépendantes. Le troisième paragraphe, sans signal CSS `assistant`, sera classifié par alternance depuis le second, lui-même potentiellement mal classifié. L'erreur de rôle se **propage en cascade** sur les éléments intra-message.
+
+**[Fait Observé]** Aucun test ne couvre ce cas : un cluster où plusieurs `Tag` appartiennent au même message logique. `test_detect_turns_generic` valide que deux blocs distincts sont détectés — ce qui est correct. Mais la granularité du clustering (`min_density=3` par défaut) peut parfaitement descendre sous le niveau message.
+`ACE->OCR/ace/engine/detector.py:L9`
+`ACE->OCR/tests/unit/test_detector.py:L4-11`
+
+---
+
+## Reformulation consolidée — Le vrai P0 unique
+
+**[Fait Observé]** Les deux omissions relevées dans le verdict convergent vers un seul constat structurel :
+
+```ACE->OCR/ace/models/chat.py#L28
+detector: str = "topo"  # topo, heuristic, flux
+```
+
+```ACE->OCR/ace/main.py#L50-68
+if options.detector == 'topo':
+    blocks = detector_topo.detect(soup)
+    winning_strategy = "forced_topo"
+elif options.detector == 'heuristic':
+    blocks = detector_heur.detect(soup)
+    winning_strategy = "forced_heuristic"
+else:
+    # V1.2.0 HYBRID ORCHESTRATION (AUTO)
+    heur_blocks = detector_heur.detect(soup)
+    ...
+```
+
+**[Inférence Logique — Consolidée]** En usage standard `ace fichier.html` (défaut `"topo"`) :
+
+| Composant | Statut |
+|---|---|
+| `TopologicalDetector` | ✅ Actif |
+| `HeuristicDetector` | ❌ Mort — jamais appelé |
+| `ExtractionValidator` | ❌ Mort — branche `else` jamais atteinte |
+| Mode `"flux"` | ❌ Fantôme — branch inexistante |
+| Mode `"auto"` / hybride | ❌ Mort — valeur non exposée en CLI |
+
+**[Fait Observé]** Ce n'est pas quatre défauts P0 indépendants. C'est un seul défaut P0 : **le mode par défaut court-circuite toute l'architecture de validation et de fallback déclarée**. Les défauts P0-B, P0-C, P0-D de l'audit initial sont des symptômes du même invariant brisé : le défaut de câblage entre `ExtractionOptions.detector` et les branches exécutables de `main.py`.
+
+La reformulation correcte du P0 unique est donc :
+
+> **P0 — Le système possède un seul chemin d'exécution réel en production.** Le mode `"topo"` forcé est le seul mode atteignable par défaut. `HeuristicDetector`, `ExtractionValidator`, le mode hybride, et le mode `"flux"` sont du code mort pour tout utilisateur standard. La documentation CLI (`--help`, `--help-strategies`) décrit un système plus capable que celui qui s'exécute réellement.
+
+---
+
+## Ce qui ne change pas
+
+Les défauts P1 et P2 restent intacts et sourcés : faux positifs de sous-chaîne dans `RoleInferrer`, code mort (`UI_LABELS_PATTERN`, `dom.py`, `LATEX_*_RE`), `ContentType` jamais utilisé, collision MD5, `<ol>` fixe à `"1."`, aplatissement `<br>` Grok, incohérence de version.
+
+Le vrai défaut architectural intra-message (un `Turn` par `Tag` sans regroupement) remplace P0-A avec un IC de **8/10** — il est réel, non testé, et potentiellement destructeur sur des documents avec des clusters granulaires.
+
+## User
+
+quelle est donc le but réelle de cette application donc meme si ce n'est pas encore atteind?
+
+## Assistant
+
+<thinking>
+The user is asking about the real purpose of this application, even if it's not yet fully achieved. I need to deduce this from the code alone, as per the audit methodology.
+</thinking>
+
+En me basant strictement sur le code, sans la documentation.
+
+---
+
+## But réel déduit du code source
+
+### Ce que le nom et les modèles révèlent
+
+`ACE` = **Adaptive Chat Extractor**. Le modèle de données est le point de départ le plus honnête :
+
+```ACE->OCR/ace/models/chat.py#L1-45
+class Role(Enum):
+    USER = "user"
+    MODEL = "model"
+    SYSTEM = "system"
+
+class ContentType(Enum):
+    TEXT = "text"
+    CODE = "code"
+    MATH_INLINE = "math_inline"
+    MATH_BLOCK = "math_block"
+    MERMAID = "mermaid"
+    TABLE = "table"
+    IMAGE = "image"
+
+@dataclass
+class Turn:
+    index: int
+    role: Role
+    content: List[MessagePart]
+    confidence: float
+```
+
+**[Inférence Logique]** Le modèle cible n'est pas "du texte extrait d'une page HTML". C'est une **conversation structurée typée** : chaque tour a un rôle, un index, une confiance, et un contenu décomposé en parties hétérogènes (code, math, diagramme, tableau). L'intention est de produire une représentation **sémantiquement fidèle** d'un échange LLM — pas une extraction brute.
+
+---
+
+### La chaîne `ACE → OCR` du nom de dossier
+
+Le dossier racine s'appelle `ACE->OCR`. Ce n'est pas un acronyme — c'est une **flèche de transformation**. Le but déclaré implicitement par le nommage est :
+
+> Prendre un export HTML opaque d'une interface LLM (format fermé, non portable) et le convertir en un format lisible, archivable, réutilisable — **comme un OCR fait pour les images**.
+
+L'analogie est précise : un export ChatGPT ou Claude est au texte structuré ce qu'un scan PDF est au texte natif. ACE est l'outil qui "lit" ce format et en extrait la substance.
+
+---
+
+### Ce que le pipeline complet révèle comme ambition
+
+En lisant les couches dans l'ordre :
+
+1. **Sanctuaire** — préserver les blocs techniques (code, LaTeX, Mermaid) sans les corrompre
+2. **Détection multi-moteur** — s'adapter à n'importe quelle structure HTML, quelle que soit la plateforme source
+3. **Validation** — rejeter les faux positifs (navigation, UI) pour ne garder que la conversation réelle
+4. **Inférence de rôle** — reconstruire qui a dit quoi, même sans marqueur explicite
+5. **Conversion** — produire un Markdown propre, ou du JSON/YAML structuré
+
+**[Inférence Logique]** L'intention complète est :
+
+> **Transformer n'importe quel export HTML de conversation LLM — quelle que soit la plateforme (ChatGPT, Claude, Gemini, DeepSeek, Grok, AI Studio) — en un document Markdown, JSON ou YAML fidèle, structuré, et exploitable programmatiquement, en préservant tous les contenus riches.**
+
+---
+
+### Ce que "pas encore atteint" signifie concrètement
+
+| Intention | État réel |
+|---|---|
+| Agnostique multi-plateforme | Partiellement — 4 fixtures, toutes synthétiques |
+| Rôles reconstruits avec confiance | Fragile — faux positifs de sous-chaîne, alternance naïve |
+| Contenu riche préservé (code, math, mermaid) | Fonctionnel sur cas simples |
+| `ContentType` sémantique par partie | Déclaré dans le modèle, jamais assigné |
+| Multi-format (md/json/yaml) | Implémenté, non validé sur cas réels |
+| Résistance aux faux positifs UI | Théorique — validateur mort en usage default |
+
+**[Fait Observé]** La cible finale implicite — lisible dans `ContentType`, `Turn.confidence`, `ChatSession`, et la notion de `MessagePart` — est un **pipeline de transformation de données** suffisamment fiable pour être utilisé comme source dans un autre système : ingestion RAG, archivage personnel, analyse de conversations, export vers un second LLM. Pas juste un outil de lecture humaine.
+
+C'est un **ETL spécialisé pour conversations LLM**. L'OCR du titre est la métaphore exacte : extraire de la structure depuis un format qui n'en expose aucune.
+
+## User
+
+quelle vrai but devrai t'il résoudre plutot que  la désambiguïsation structurelle : discerner les tours de conversation du bruit UI dans un DOM hostile, opaque, et qui change à chaque déploiement de plateforme. C'est un problème de détection de signal dans un flux bruité, pas un problème de transformation de format?
+
+## Assistant
+
+<thinking>
+The user is making a very sharp observation. They're saying the real problem ACE should be solving is not format transformation (HTML → Markdown/JSON/YAML), but rather **signal detection in a noisy stream**: distinguishing conversation turns from UI noise in a hostile, opaque DOM that changes with every platform deployment.
+
+Let me think about this carefully by looking at the code again.
+
+The user is essentially saying:
+- The "OCR" metaphor is wrong or incomplete
+- The hard problem is not "how do I convert HTML to Markdown"
+- The hard problem is "how do I find the conversation signal in a DOM that was designed for rendering, not for extraction, and that changes constantly"
+
+
+- The `TopologicalDetector` and `HeuristicDetector` are actually attempts at this signal detection problem, while the `ExtractionValidator` tries to validate it, but the audit revealed only the `TopologicalDetector` runs in production
+- Format transformation is trivial—the real challenge is filtering out all the UI clutter (navigation, buttons, modals, timestamps, avatars, copy confirmations) to isolate actual conversation content
+- This can't be solved with structural patterns alone since DOM structure varies by platform, and CSS class heuristics break with every deployment—it needs something fundamentally different, whether content-based, ML-driven, or an entirely new approach
+
+The architecture has it backwards: most complexity goes into the transformation layer when the actual bottleneck is robust signal detection. The current structural approach is inherently fragile, so I need to think about what a proper detection strategy would look like versus what's happening now.
+
+A better approach would focus on content signals rather than DOM structure—things like text density, reading flow, and semantic properties that don't change when the platform updates. This is really a signal extraction problem, like finding speech in noisy audio or relevant text in a degraded image. Conversation turns have intrinsic properties independent of DOM: they alternate between voices, contain coherent question-answer pairs, have linguistic markers, show different content density than UI chrome, and model responses often include code. These are the actual signals worth detecting.
+
+The current ACE architecture relies entirely on DOM topology, CSS classes, and role alternation—all the fragile, platform-specific things that break with every deployment. The real solution needs to be content-aware and resilient to structural changes, built on the signal properties of conversation itself rather than how it's marked up.
+</thinking>
+
+C'est une reformulation fondamentale. Voici ce que le code révèle quand on le lit sous cet angle.
+
+---
+
+## Le problème que le code tente de résoudre vs le problème réel
+
+### Ce que le code fait réellement
+
+Toute la complexité d'ACE est concentrée dans la **couche de détection** :
+
+```ACE->OCR/ace/engine/detector.py#L5-9
+class TopologicalDetector:
+    """
+    Détecteur topologique V1.2.0.
+    Utilise 'Sliding Window Merging' en O(N) pour agglomérer les flux contigus...
+    """
+    def __init__(self, min_density: int = 3):
+```
+
+```ACE->OCR/ace/engine/heuristic.py#L115-125
+class HeuristicDetector:
+    """
+    Système de détection basé sur un pattern Chain of Responsibility "Waterfall".
+    Les sondes sont organisées de la plus spécifique à la plus générique.
+    """
+    def __init__(self):
+        self.probes = [
+            DataAttributeProbe(),
+            SemanticClassProbe(),
+            StructuralSeparatorProbe(),
+            FallbackStructuralRepetitionProbe()
+        ]
+```
+
+**[Fait Observé]** Les deux détecteurs raisonnent exclusivement sur des **propriétés du DOM** : noms de tags, classes CSS, attributs `data-*`, profondeur d'imbrication, parenté de nœuds. Zéro signal sur le contenu sémantique du texte lui-même.
+
+---
+
+### Pourquoi c'est le mauvais niveau d'abstraction
+
+**[Inférence Logique]** Une plateforme LLM déploie une nouvelle version CSS. Les classes `user-message` deviennent `usr-msg-v3` ou disparaissent au profit d'attributs `data-role`. La `SemanticClassProbe` retourne `[], 0.0`. La `DataAttributeProbe` aussi. On tombe sur `FallbackStructuralRepetitionProbe` avec une confiance de **0.4** — le seuil plancher.
+`ACE->OCR/ace/engine/heuristic.py:L96-108`
+
+```ACE->OCR/ace/engine/heuristic.py#L96-108
+class FallbackStructuralRepetitionProbe(BaseProbe):
+    """Dernier recours: Cherche le motif structurel le plus répété au sein du document."""
+    def probe(self, soup: BeautifulSoup) -> Tuple[List[Tag], float]:
+        patterns = defaultdict(list)
+        for tag in soup.find_all(['div', 'article', 'section']):
+            if tag.parent:
+                sig = f"{tag.parent.name}>{tag.name}"
+                patterns[sig].append(tag)
+```
+
+**[Fait Observé]** Le dernier recours est basé sur la **répétition structurelle** : le motif `parent>enfant` le plus fréquent. Une barre de navigation avec 12 `li` identiques est structurellement plus "répétée" qu'une conversation de 4 tours. Le signal DOM est bruité **par construction** — le DOM n'a pas été conçu pour être extrait, il a été conçu pour être rendu.
+
+---
+
+### Le vrai problème : détecter un signal dans un flux bruité
+
+**[Inférence Logique]** Les tours de conversation ont des propriétés **intrinsèques et DOM-indépendantes** que le code n'exploite à aucun moment :
+
+| Propriété intrinsèque d'un tour | Exploitée dans ACE |
+|---|---|
+| Alternance de voix (question / réponse) | Partiellement — mais seulement en *validation*, jamais en *détection* |
+| Densité textuelle asymétrique (user court, model long) | Non |
+| Marqueurs linguistiques ("peux-tu", "voici", "en résumé") | Non |
+| Présence de blocs techniques (code, math) → signal fort "réponse modèle" | Oui, mais seulement en inférence post-détection |
+| Cohérence topicale entre tours adjacents | Non |
+| Rapport signal/bruit UI (boutons, timestamps, avatars ont < 3 mots) | Partiellement — `min_density=3` est la seule heuristique de contenu |
+
+**[Fait Observé]** `min_density = 3` — trois mots — est le **seul signal de contenu** dans toute la chaîne de détection. Tout le reste est structure DOM.
+`ACE->OCR/ace/engine/detector.py:L9`
+
+---
+
+### La conséquence architecturale directe
+
+**[Inférence Logique]** En reformulant le problème comme tu l'indiques — **détection de signal dans un flux bruité** — l'architecture actuelle est inversée :
+
+```/dev/null/inversion.txt#L1-8
+Architecture actuelle :
+  DOM structure → clustering → scoring → un Turn par Tag → inférence rôle
+
+Architecture cohérente avec le vrai problème :
+  Contenu brut → filtrage bruit UI (densité, longueur, marqueurs)
+              → détection d'alternance de voix (signal sémantique)
+              → reconstruction des frontières de tours
+              → DOM comme métadonnée secondaire, pas comme signal primaire
+```
+
+**[Fait Observé]** Le `SanctuaryManager` est paradoxalement la partie la plus robuste du système précisément parce qu'il raisonne sur le **contenu** (`annotation encoding="application/x-tex"`, texte commençant par `graph TD`) plutôt que sur la structure DOM.
+`ACE->OCR/ace/core/sanctuary.py:L45-75`
+
+---
+
+### Ce que ça change fondamentalement
+
+**[Inférence Logique]** Si le problème est "détecter le signal conversationnel dans un DOM hostile qui mute", alors :
+
+1. **La transformation de format** (HTML → Markdown) est un **post-traitement trivial** — `BeautifulSoup` + un dispatcher suffisent. C'est 10% du problème réel.
+
+2. **Le vrai investissement** devrait être dans un détecteur qui fonctionne quand toutes les classes CSS changent, quand les `data-*` disparaissent, quand la structure s'aplatit ou se profondifie — c'est-à-dire un détecteur fondé sur les **invariants du contenu conversationnel**, pas sur les **accidents du DOM**.
+
+3. **Le `ExtractionValidator` est le seul composant qui raisonne dans la bonne direction** — il vérifie l'alternance de rôles, donc une propriété du signal — mais il est mort en production et positionné comme gardien de porte plutôt que comme détecteur principal.
+`ACE->OCR/ace/engine/validator.py:L46-58`
+
+**[Fait Observé]** ACE a construit un transformateur de format sophistiqué avec un détecteur de signal fragile. Le problème réel exige l'inverse : un détecteur de signal robuste avec un transformateur de format simple.
+
+## User
+
+## Continuation — Ce que l'audit ne dit pas encore
+
+La réponse auditée a correctement posé le diagnostic — architecture inversée, signal DOM fragile. Mais elle s'arrête au moment où ça devient vraiment intéressant. Voici ce qui manque.
+
+---
+
+### 1. Le `confidence` compute mais ne sert à rien
+
+**[Fait Observé]** `Turn.confidence` est calculé par `RoleInferrer.infer()` et stocké sur chaque tour. Il n'est ni vérifié, ni routé, ni exposé différemment selon sa valeur. La seule utilisation est cosmétique (`report.md` dans le debug). `[inferencer.py:L32-40]` `[main.py:L98-100]`
+
+**[Inférence Logique]** Si le vrai problème est "détection de signal bruité", la confiance devrait être le **signal de sortie primaire**, pas une métadonnée ignorée. Un système de détection de signal sans exploitation de sa propre incertitude ne peut pas s'améliorer ni alerter quand il échoue. `confidence=0.4` et `confidence=0.8` produisent exactement le même Markdown en sortie.
+
+---
+
+### 2. L'alternance est une propriété de détection, pas de validation
+
+L'audit souligne que [ExtractionValidator](cci:2://file:///home/sidix/dev_focus/labs/focus/ACE-%3EOCR/ace/engine/validator.py:4:0-69:19) est le seul composant à raisonner sur l'alternance — mais le place comme "gardien de porte mort en production". La vraie observation out-of-the-box :
+
+> **L'alternance de rôles n'est pas un critère de validation de l'extraction — c'est le phénomène à détecter en premier.**
+
+Une vraie conversation LLM est, par définition, un signal **alterné et asymétrique** : USER court → MODEL long → USER court → MODEL long. Ce pattern est présent dans le contenu **avant** de regarder la structure DOM. Un détecteur qui cherche d'abord ce pattern de densité alternée dans le document trouverait les tours sans jamais avoir besoin de classes CSS.
+
+---
+
+### 3. La vraie question out-of-the-box
+
+L'audit répond à "pourquoi le code est fragile". Il ne répond pas à :
+
+> **Pourquoi une conversation LLM exportée en HTML est-elle difficile à extraire alors qu'un simple fichier JSON de l'API ne l'est pas ?**
+
+La réponse : parce que le HTML est le **rendu d'une interface**, pas une sérialisation de données. ACE attaque le problème par le mauvais bout — il essaie de lire un rendu comme si c'était une structure de données. L'export HTML de ChatGPT existe parce que l'API n'est pas accessible aux utilisateurs finaux, pas parce que c'est un bon format d'échange.
+
+Le vrai but, formulé honnêtement :
+
+> **Reconstruire la représentation JSON interne que le serveur a transmis au navigateur, à partir de son rendu HTML uniquement.**
+
+C'est du reverse-engineering de format, pas de la transformation. Et ça change radicalement l'approche : on ne cherche pas "les divs qui ressemblent à des messages" — on cherche à **inverser le template Jinja/JSX** qui a produit le HTML.
+
+---
+
+### 4. Ce qui serait robuste
+
+Un détecteur fondé sur les invariants du **contenu**, pas du DOM :
+
+| Invariant conversationnel | DOM-indépendant ? |
+|---|---|
+| Messages alternatifs en densité (court/long/court/long) | ✅ |
+| Premier bloc souvent interrogatif ou impératif | ✅ |
+| Blocs techniques (code, math) apparaissent dans les réponses longues | ✅ |
+| Ratio text/HTML élevé = signal utile, faible = bruit UI | ✅ |
+| Répétition de structure à intervalle régulier | ✅ (mais pas exploité ainsi) |
+| Classes CSS "assistant", attributs `data-*` | ❌ change à chaque déploiement |
+
+ACE exploite uniquement la dernière ligne. Les cinq premières ne sont utilisées nulle part.
+
+## Assistant
+
+<thinking>
+The user is pushing the analysis further, making three very sharp observations:
+
+1. `confidence` is computed but never used operationally
+2. Alternation is a detection property, not a validation property
+3. The real problem is reverse-engineering the internal JSON representation from its HTML render
+
+They want me to continue this line of thinking, going deeper into what ACE should really be doing. Let me think carefully about each point.
+
+The user is essentially saying:
+- ACE is trying to read a rendered output as if it were structured data
+- The real problem is: given an HTML render of a conversation, reconstruct the original data structure
+
+
+- This is reverse-engineering, not transformation
+
+Now I'm seeing the architectural implications: confidence should be the primary output signal in a probabilistic detection framework, not a discarded byproduct. And alternation is a structural invariant of conversations—it's content-based and domain-independent, not something that varies with DOM structure or rendering choices.
+
+The real problem is inverse rendering: given the HTML output, what was the original data structure? This maps to classic information extraction techniques like wrapper induction and schema matching. The user's five DOM-independent features form a detection signature that works regardless of how the conversation is formatted or styled.
+
+Now I'm sketching out the actual implementation: first decompose the document into atomic content blocks and measure their density characteristics, then scan for the alternating pattern that signals conversation turns, use those boundaries to group blocks together, and finally assign speaker roles based on the structural markers.
+
+This is fundamentally different from DOM-based extraction—instead of hunting for message containers in the HTML, I'm working directly with the content itself to find the underlying rhythm of the conversation.
+
+But there's a critical gap: if I compute confidence scores throughout this process but never actually use them, the system becomes blind to its own failures and can't self-correct or warn when extractions are uncertain.
+
+The real insight is that the alternation pattern *is* the structure—I don't need to find structure first and then infer roles, I should be finding the pattern itself, which reveals everything. The HTML is just a lossy rendering of what's really a JSON structure underneath, and while I can't see the template that maps turns to DOM nodes, I can reverse-engineer the original structure from what's visible.
+
+The key limitation I'm seeing now is that this approach has no way to express uncertainty or improve itself—it's deterministic and synchronous with no feedback loop. Even if I could extract confidence scores, they'd be based on the same fragile DOM signals I'm already working with, so there's no way to bootstrap a better detector from a weak one. And fundamentally, I haven't even defined what "correct" means for this kind of format transformation.
+
+Looking at the session-level data, I notice that `ChatSession` has fields like `id`, `title`, `created_at`, and `source` that are never populated. The metadata that could distinguish between platforms and conversations is potentially recoverable from the DOM but never attempted. The real problem is that each document gets processed in isolation—there's no learning across documents from the same platform, which is where a wrapper induction approach would actually get stronger over time.
+
+This brings me back to the fundamental architectural question: what should the right approach actually be for detecting signals in a noisy stream?
+
+I'm considering several directions. One is unsupervised segmentation—treating the document as a sequence of content units and finding natural boundaries that minimize variance within segments while maximizing contrast between them, essentially a 1D clustering problem. Another is an HMM-based approach where hidden states represent user messages, model responses, and UI noise, with the Viterbi algorithm recovering the most likely sequence. There's also wrapper induction, which is how commercial scrapers work—learning platform-specific templates from examples that become highly reliable once trained. Or I could use an LLM to directly identify conversation turns from the text content itself.
+
+What strikes me is that the invariant table the user provided actually captures something fundamental about this problem. I'm realizing the core issue: confidence scores are just metadata unless they actively drive decisions, and the real insight is that alternating patterns in the data can be detected through simple density analysis without needing machine learning. The deeper question becomes about reverse-engineering—what's the minimum information needed to reconstruct the original structure?—which exposes how much session-level context gets completely discarded. But there's a fundamental gap: there's no evaluation framework to measure whether any approach actually works, and the actual solution requires combining content-based segmentation with probabilistic role assignment rather than treating these as separate problems.
+</thinking>
+
+Ces trois observations reformulent le problème plus précisément que l'audit initial. Voici ce qui en découle directement, en restant strictement dans le code.
+
+---
+
+## 1. `confidence` : un signal mesuré puis jeté
+
+**[Fait Observé]** `Turn.confidence` est calculé, stocké dans le dataclass, et utilisé exactement une fois — en affichage cosmétique dans le rapport debug.
+
+```ACE->OCR/ace/cli.py#L93-97
+report += f"### Tour {turn.index} - {role} (Confiance: {turn.confidence:.2f})\n"
+report += f"> {content_preview}\n\n"
+```
+
+```ACE->OCR/ace/main.py#L98-100
+part = MessagePart(type=ContentType.TEXT, content=restored_content)
+turn = Turn(index=i, role=role, content=[part], confidence=confidence)
+session.turns.append(turn)
+```
+
+**[Inférence Logique]** `confidence=0.4` et `confidence=0.95` produisent **le même Markdown**, le même JSON, le même YAML. Le système a construit un capteur mais n'a branché aucun fil sur sa sortie. C'est pire qu'une absence de mesure — c'est une mesure qui crée l'illusion d'une robustesse inexistante.
+
+**[Inférence Logique]** Pour un système de détection de signal bruité, la confiance devrait gouverner au moins trois comportements absents :
+
+| Comportement attendu | Présent dans le code |
+|---|---|
+| Avertissement utilisateur si confiance globale < seuil | Non |
+| Marquage différencié des tours incertains en sortie | Non |
+| Déclenchement d'une stratégie alternative si confiance faible | Non |
+| Propagation de l'incertitude au niveau session | Non |
+
+Le modèle `ChatSession` n'a pas de champ `confidence` au niveau session.
+`ACE->OCR/ace/models/chat.py:L30-37`
+
+---
+
+## 2. L'alternance : propriété à détecter, pas à valider
+
+**[Fait Observé]** Dans le code, l'alternance n'est consultée qu'à deux endroits — tous deux **après** la détection, jamais pendant :
+
+```ACE->OCR/ace/engine/validator.py#L46-58
+if len(blocks) >= 2:
+    roles = set()
+    for b in blocks:
+        role, _ = self.inferrer.infer(b, context=[])
+        roles.add(role)
+    if len(roles) == 1:
+        return False
+```
+
+```ACE->OCR/ace/engine/inferencer.py#L32-38
+else:
+    if context:
+        last_role = context[-1].role
+        if last_role == Role.USER:
+            return Role.MODEL, 0.5
+        else:
+            return Role.USER, 0.5
+```
+
+**[Inférence Logique]** Le validateur utilise l'alternance comme **filtre binaire** — présente ou absente. L'inférer utilise l'alternance comme **tie-breaker** en dernier recours. Aucun des deux n'utilise l'alternance comme **signal de segmentation primaire**.
+
+**[Inférence Logique]** L'alternance USER/MODEL est un invariant **avant** le DOM, pas après. Une conversation LLM produit structurellement un pattern de densité textuelle :
+
+```/dev/null/pattern.txt#L1-6
+Tour 1 USER  : court   (question, 5-30 mots)
+Tour 2 MODEL : long    (réponse, 50-500 mots, souvent avec blocs techniques)
+Tour 3 USER  : court
+Tour 4 MODEL : long
+...
+```
+
+Ce pattern est détectable sur le contenu brut **avant** d'ouvrir un seul tag CSS. Le `_text_density()` existe dans le `TopologicalDetector` mais sert uniquement à filtrer le bruit, jamais à détecter le signal d'alternance lui-même.
+`ACE->OCR/ace/engine/detector.py:L15-16`
+
+---
+
+## 3. Ce que le code révèle sur la vraie nature du problème
+
+**[Fait Observé]** `ChatSession` possède des champs `source`, `title`, `created_at` — tous `None` ou générés localement, jamais remplis depuis le document source.
+
+```ACE->OCR/ace/models/chat.py#L30-37
+@dataclass
+class ChatSession:
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    source: Optional[str] = None
+    title: Optional[str] = None
+    created_at: Optional[datetime] = field(default_factory=datetime.now)
+```
+
+```ACE->OCR/ace/main.py#L84-86
+session = ChatSession()
+session.turns = []
+```
+
+**[Inférence Logique]** Le document HTML contient potentiellement : un titre de conversation (`<title>`, `<h1>`), une plateforme source (méta-tags, domaine), des timestamps (attributs `datetime`, classes `timestamp`). Aucune tentative d'extraction de ces métadonnées n'existe dans le code. La session est une coquille vide avec un UUID aléatoire.
+
+---
+
+## 4. Ce que l'architecture ne peut pas faire — structurellement
+
+**[Inférence Logique]** Le pipeline est **stateless et déterministe** sur un document isolé. Il n'a aucun mécanisme pour :
+
+- Apprendre le template DOM d'une plateforme à partir de plusieurs documents du même type
+- Détecter que deux documents viennent de la même plateforme et réutiliser un modèle d'extraction
+- Mesurer si une extraction est correcte — il n'y a aucun ground truth, aucune métrique d'évaluation, aucun test de régression sur résultat sémantique
+
+**[Fait Observé]** L'absence totale de métrique d'évaluation dans les tests confirme ceci. Les tests vérifient des propriétés syntaxiques de la sortie (`"## User" in content`, `` "```mermaid" in content ```) — jamais des propriétés sémantiques (le bon contenu est dans le bon tour, l'ordre est préservé, aucun contenu UI n'a fui).
+`ACE->OCR/tests/integration/test_end_to_end.py:L6-17`
+
+---
+
+## 5. Le vrai problème, formulé depuis le code
+
+**[Inférence Logique]** Le HTML d'export LLM est le résultat d'une fonction `render(data) = HTML`. `data` est la représentation JSON interne — celle que l'API renverrait si elle était accessible. Le vrai problème est l'**inversion de cette fonction** : reconstruire `data` depuis `HTML` uniquement.
+
+Cette inversion a une propriété critique : elle est **injective côté plateforme** — le même `data` produit toujours le même `HTML` pour une version donnée du frontend. Les invariants du signal à exploiter sont donc :
+
+```/dev/null/invariants.txt#L1-10
+Invariants DOM-dépendants (fragiles, changent à chaque déploiement) :
+  - Classes CSS "user-message", attributs "data-message-author-role"
+  → Ce qu'ACE exploite à 90%
+
+Invariants contenu-dépendants (stables, propriétés de la conversation elle-même) :
+  - Densité alternée court/long
+  - Premier bloc souvent interrogatif ou impératif  
+  - Blocs techniques concentrés dans les tours longs
+  - Ratio texte/HTML élevé = signal, faible = bruit UI
+  → Ce qu'ACE exploite à 10% (uniquement min_density=3)
+```
+
+**[Inférence Logique]** ACE a construit le détecteur sur la couche la plus instable du problème, et laissé inexploitée la couche la plus stable. L'architecture correcte pour le problème tel qu'il est formulé serait de **segmenter d'abord par densité alternée**, puis d'utiliser le DOM comme signal de confirmation secondaire — exactement l'inverse de ce qui est implémenté.
+
+## User
+
+## Continuation — Ce que l'audit ne dit pas encore
+
+La réponse précédente a correctement posé le diagnostic — architecture inversée, signal DOM fragile, invariants inexploités. Voici la continuation directe, en partant de la table des invariants que vous avez fournie.
+
+---
+
+## 1. `confidence` : un signal mesuré puis jeté
+
+**[Fait Observé]** `Turn.confidence` est calculé par `RoleInferrer.infer()` et stocké. Il n'est utilisé qu'une seule fois dans tout le code applicatif — pour l'affichage cosmétique dans le rapport debug.
+
+```ACE->OCR/ace/cli.py#L93-97
+report += f"### Tour {turn.index} - {role} (Confiance: {turn.confidence:.2f})\n"
+```
+
+**[Fait Observé]** Ni `main.py`, ni le `MarkdownDispatcher`, ni les formats de sortie JSON/YAML n'utilisent `confidence` pour moduler quoi que ce soit. Un tour extrait avec `confidence=0.4` (alternance par défaut, aucun signal) et un tour extrait avec `confidence=0.95` (classe CSS explicite) produisent la même sortie.
+`ACE->OCR/ace/main.py:L88-100`
+
+**[Inférence Logique]** Dans un système de détection de signal bruité, la confiance est la **sortie primaire** — avant le contenu. Elle devrait gouverner au minimum :
+
+| Comportement | Présent ? |
+|---|---|
+| Avertissement si confiance globale session < seuil | Non |
+| Marquage différencié des tours incertains (ex: `[?]` en MD) | Non |
+| Déclenchement d'une stratégie alternative si confiance < seuil | Non |
+| Propagation de l'incertitude au niveau `ChatSession` | Non — pas de champ dans le modèle |
+
+```ACE->OCR/ace/models/chat.py#L30-37
+@dataclass
+class ChatSession:
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    source: Optional[str] = None
+    title: Optional[str] = None
+    turns: List[Turn] = field(default_factory=list)
+```
+
+**[Inférence Logique]** Le système a construit un capteur mais n'a branché aucun fil sur sa sortie. C'est structurellement pire qu'une absence de mesure : c'est une mesure qui crée l'illusion d'une robustesse inexistante tout en consommant des cycles de calcul.
+
+---
+
+## 2. L'alternance comme signal de détection primaire
+
+**[Fait Observé]** L'alternance de rôles est utilisée à deux endroits dans le code — tous deux **après** la détection des blocs, jamais pendant :
+
+1. `ExtractionValidator.is_valid()` — comme filtre binaire rejet/accepte (`validator.py:L46-58`)
+2. `RoleInferrer.infer()` — comme tie-breaker en dernier recours (`inferencer.py:L32-38`)
+
+**[Fait Observé]** La densité textuelle existe comme fonction (`_text_density`, `detector.py:L15-16`) mais n'est utilisée que pour **filtrer le bruit UI** (seuil minimal de 3 mots). Elle n'est jamais utilisée pour détecter le **pattern d'alternance de densité** qui caractérise une conversation :
+
+```/dev/null/conversation_pattern.txt#L1-6
+Tour 1 (USER)  : 5-30 mots, souvent interrogatif/impératif
+Tour 2 (MODEL) : 50-500 mots, souvent avec code/tableaux
+Tour 3 (USER)  : 5-30 mots
+Tour 4 (MODEL) : 50-500 mots
+...
+```
+
+**[Inférence Logique]** Ce pattern de densité alternée est un invariant **du contenu**, indépendant du DOM. Il est présent dans toute conversation LLM exportée, quelle que soit la plateforme, quelle que soit la version du frontend. Le détecteur actuel l'ignore entièrement — il cherche des classes CSS et des attributs `data-*` qui changent à chaque déploiement.
+
+---
+
+## 3. La table des invariants — transformée en primitives de détection
+
+En partant de votre table, voici comment chaque invariant pourrait devenir une **primitive de détection** directement exploitable, avec son statut dans le code actuel :
+
+| Invariant conversationnel | Primitive de détection correspondante | Statut dans ACE |
+|---|---|---|
+| Messages alternatifs en densité (court/long) | `detect_alternating_density(text_blocks) → List[int]` (indices de frontières) | **Absent** — `_text_density` existe mais n'est pas chaînée en pattern |
+| Premier bloc souvent interrogatif ou impératif | `classify_speech_act(text) → {QUESTION, COMMAND, STATEMENT}` | **Absent** |
+| Blocs techniques (code, math) dans les réponses longues | `has_technical_block(tag) → bool` | **Partiel** — `tag.find(['pre','code'])` dans inferencer, jamais en détection |
+| Ratio text/HTML élevé = signal, faible = bruit UI | `text_html_ratio(tag) → float` | **Absent** — le ratio n'est jamais calculé |
+| Répétition de structure à intervalle régulier | `detect_periodic_structure(blocks) → int` (période) | **Partiel** — `FallbackStructuralRepetitionProbe` le fait mais sur DOM, pas sur contenu |
+
+**[Inférence Logique]** ACE exploite **0% des invariants de contenu** dans sa couche de détection. Les seuls signaux utilisés pour segmenter le document sont : noms de tags, classes CSS, attributs `data-*`, profondeur DOM, parenté de nœuds. Tous sont des **accidents de rendu**, pas des **propriétés de la conversation**.
+
+---
+
+## 4. Comment un détecteur fondé sur ces invariants fonctionnerait
+
+**[Inférence Logique — Architecture déduite]** Un `ContentSignalDetector` utiliserait un pipeline inversé par rapport au `TopologicalDetector` actuel :
+
+```/dev/null/content_signal_detector.txt#L1-18
+1. Extraction du texte linéarisé
+   → Parcourir le DOM en ordre DFS, extraire tous les blocs texte
+   → Chaque bloc = (texte, tag_source, ratio_text/html, densité)
+
+2. Segmentation par densité alternée
+   → Scanner la séquence de densités, détecter le pattern court/long/court/long
+   → Les frontières de segmentation sont les points où la densité change de régime
+   → Complexité O(N) — un seul passage
+
+3. Regroupement des blocs en tours
+   → Les blocs entre deux frontières forment un tour candidat
+   → Le tag_source le plus englobant de chaque groupe devient le conteneur
+
+4. Assignation de rôle par position + contenu
+   → Tours impairs (1,3,5...) = USER (court, interrogatif)
+   → Tours pairs (2,4,6...) = MODEL (long, contient blocs techniques)
+   → Le DOM (classes CSS) ne sert qu'à confirmer/infirmer, pas à détecter
+
+5. Score de confiance par tour
+   → Fonction de : cohérence de densité, présence marqueurs linguistiques, confirmation DOM
+   → confidence faible → avertissement en sortie
+```
+
+**[Fait Observé]** Aucune de ces cinq étapes n'est implémentée dans `detector.py` ou `heuristic.py`. Le `TopologicalDetector` fait l'étape 1 partiellement (`_text_density`), saute les étapes 2-3, et délègue l'étape 4 au `RoleInferrer` en post-traitement.
+
+---
+
+## 5. Ce que le `confidence` devrait gouverner — et ne gouverne pas
+
+**[Inférence Logique]** Si le `confidence` devient le signal de sortie primaire, voici les comportements qui en découlent naturellement et qui sont **tous absents** :
+
+| Seuil de confiance | Comportement attendu | Implémenté ? |
+|---|---|---|
+| `> 0.8` | Tour fiable, sortie normale | ✅ (tous les tours, sans distinction) |
+| `0.5 - 0.8` | Tour incertain, marqué `[?]` en MD, `confidence` exposé en JSON | ❌ |
+| `0.3 - 0.5` | Tour spéculatif, avertissement stderr, possibilité de fallback | ❌ |
+| `< 0.3` | Tour probablement erroné, extraction en mode dégradé | ❌ |
+
+**[Fait Observé]** `ChatSession` n'a pas de champ `global_confidence`. Le format de sortie JSON inclut `confidence` par tour (`main.py:L108-118`) mais aucun consommateur de cette sortie n'est prévu pour réagir différemment selon sa valeur.
+
+---
+
+## 6. Le vrai problème : inverser la fonction `render()`
+
+**[Inférence Logique]** Le HTML d'export LLM est le résultat d'une fonction :
+
+```
+render(data_conversation, template_platform, version_frontend) → HTML
+```
+
+Le vrai problème n'est pas "transformer du HTML en Markdown" — c'est trivial et déjà résolu par `MarkdownDispatcher`. Le vrai problème est :
+
+> **Inverser `render()` pour reconstruire `data_conversation` à partir du `HTML` uniquement, sans connaître `template_platform` ni `version_frontend`.**
+
+**[Inférence Logique]** Cette inversion a une propriété critique : `render()` est **déterministe** pour une plateforme et une version données. Le même `data` produit toujours le même `HTML`. Donc :
+
+1. **Court terme** (sans connaître le template) : utiliser les invariants de contenu pour segmenter — ce qu'ACE ne fait pas
+2. **Moyen terme** (après avoir vu quelques documents de la même plateforme) : apprendre le template par **wrapper induction** — ce qu'ACE ne peut pas faire car il n'a pas de mémoire inter-documents
+3. **Long terme** : avoir un détecteur qui utilise le DOM comme **signal de confirmation** pour une segmentation déjà établie par le contenu — exactement l'inverse de l'architecture actuelle
+
+---
+
+## 7. Synthèse — ce qu'ACE devrait être
+
+**[Inférence Logique — Vision déduite du code]** Le système que le code tente de devenir — lisible dans `ContentType`, `Turn.confidence`, `ChatSession`, et la notion de `ExtractionValidator` — est :
+
+> Une chaîne de traitement qui **détecte d'abord le signal conversationnel par ses invariants de contenu** (densité alternée, marqueurs linguistiques, blocs techniques), **segmente le document en tours**, puis **utilise le DOM comme source secondaire** pour confirmer, raffiner, et extraire les métadonnées (timestamps, avatars, noms d'utilisateurs). Le `confidence` gouverne le comportement de sortie : avertissements, marquage, fallback. La conversion en Markdown/JSON/YAML est une couche de sérialisation triviale en bout de chaîne.
+
+**[Fait Observé]** L'implémentation actuelle fait exactement l'inverse : elle utilise le DOM comme source primaire de segmentation, relègue le contenu à un seuil minimal de 3 mots, confine la confiance à un rôle cosmétique, et place la conversion de format au cœur du pipeline alors qu'elle devrait être périphérique.
+
+**[Fait Observé]** Le code contient déjà tous les germes de cette architecture correcte — `_text_density`, `has_technical_block` (via `tag.find()`), `confidence`, `UI_LABELS_PATTERN`, `is_ui_element` — mais ils sont soit inutilisés, soit positionnés au mauvais endroit du pipeline. Le problème n'est pas l'absence de briques, c'est leur **ordre d'assemblage**.
+
+## Assistant
+
+<thinking>
+The user has provided a very detailed continuation of the audit analysis. They're now asking me to continue from where this analysis leaves off. Let me re-read everything carefully.
+
+The user has essentially written a comprehensive analysis themselves (in the continuation), and now they're asking me to contribute what's still missing or what comes next.
+
+Let me think about what genuinely hasn't been said yet:
+
+1. The analysis has covered:
+   - `confidence` is computed but never used operationally
+   - Alternation should be a detection property, not a validation property
+   - The real problem is inverting `render()` 
+   - The five DOM-independent invariants
+   - What a `ContentSignalDetector` would look like
+   - The architecture is inverted — DOM-first when it should be content-first
+
+2. What genuinely hasn't been said yet:
+
+The `SanctuaryManager` is already proof that content-first detection works in this codebase — it doesn't hunt for tag structures but instead looks for `annotation[encoding="application/x-tex"]` and text patterns matching Mermaid keywords. That's the working model nobody's acknowledged. And the hash collision mechanism in Sanctuary isn't a bug — it's actually a content-deduplication feature that's been hiding in plain sight.
+
+The `min_density=3` threshold is really a content classifier masquerading as a text/HTML ratio, except it's counting words instead of measuring actual character density. A proper implementation would divide the character count of extracted text by the total length of the serialized tag. The `_are_compatible_for_merge` function is trying to solve a clustering problem using DOM-based heuristics like shared parents and class names, but that's the hard part that needs rethinking.
+
+The system's statelessness is a critical flaw — it can't learn or even detect when it's breaking as platforms evolve their DOM structures. More fundamentally, the real problem isn't just inverting `render()`, it's that `render()` depends on three variables: data, template, and version. ACE assumes the template stays constant, but in reality both the template and version change across platforms. The actual challenge is inverting `render()` without knowing the template or version at all, which is an underdetermined problem that requires exploiting some additional constraint.
+
+This reveals the core fragility: ACE only works if CSS classes never change, but they do constantly, causing silent degradation. A content-invariant approach would degrade gracefully since conversation structure remains stable even when the DOM shifts. There's also a mismatch in how content types are handled — everything outputs as plain text even when wrapped in structured formats like JSON or YAML, missing an opportunity to leverage the full type taxonomy. Finally, the system lacks idempotency because session IDs and timestamps are generated fresh on each run, so running ACE twice produces different outputs.
+
+The detector choice reveals deeper doubts: the default "topo" option suggests the builder doesn't trust the heuristic detector, yet the topological approach has all the identified problems, leaving the system in a state where neither detector is truly trusted. At its core, ACE is caught between two incompatible goals — being a universal adapter that works anywhere versus a specialized extractor with platform-specific logic for ChatGPT, Claude, and others. These aspirations pull in opposite directions, and the content-invariant approach might be the way to resolve this tension. The user's identified several critical gaps: the Sanctuary already demonstrates that content-signal detection works without DOM structure, inverting render() is actually underdetermined without content invariants making them necessary rather than optional, the extraction produces different IDs on identical inputs breaking idempotency, the JSON output claims rich typing but always outputs plain text, and the universal/specialized tension creates an unmaintainable adapter pattern. I should highlight these as genuine correctness and design failures rather than just architectural preferences.
+</thinking>
+
+Trois points que cette analyse n'atteint pas encore, et qui en sont la suite directe.
+
+---
+
+## 1. Le Sanctuaire est déjà la preuve que l'approche contenu-first fonctionne — personne ne l'a dit
+
+**[Fait Observé]** `SanctuaryManager.extract()` ne cherche jamais une structure DOM particulière. Il cherche :
+- `annotation[encoding="application/x-tex"]` — un attribut de contenu sémantique
+- `MERMAID_DETECTION_RE` appliqué sur le texte brut — un pattern dans le contenu
+
+```ACE->OCR/ace/core/sanctuary.py#L45-65
+for annot in soup.find_all('annotation', encoding="application/x-tex"):
+    raw_math = annot.get_text().strip()
+    ...
+
+for tag in soup.find_all(['div', 'p']):
+    text = tag.get_text()
+    if MERMAID_DETECTION_RE.search(text):
+```
+
+**[Inférence Logique]** Le Sanctuaire fonctionne sur DeepSeek, Grok, et n'importe quelle plateforme future **précisément parce qu'il ne regarde pas les classes CSS**. Il détecte le signal — `E=mc²` dans une annotation TeX, `graph TD` dans du texte — quelle que soit la structure DOM qui l'entoure. C'est le seul composant du système qui résout correctement le problème posé.
+
+**[Inférence Logique]** Le code contient donc sa propre réfutation : le sous-système le plus robuste est celui qui applique exactement l'architecture que les détecteurs auraient dû adopter. Ce n'est pas une omission — c'est une **contradiction interne non remarquée**. Le `SanctuaryManager` démontre que la détection par invariants de contenu est faisable et déjà implémentée, mais cette leçon n'a pas été transférée aux détecteurs.
+
+---
+
+## 2. Inverser `render()` est un problème **sous-déterminé** sans les invariants de contenu — pas seulement difficile
+
+**[Inférence Logique]** La formulation correcte de `render()` est :
+
+```/dev/null/render.txt#L1-3
+render(data_conversation, template_platform, version_frontend) → HTML
+```
+
+ACE reçoit `HTML` et doit reconstruire `data_conversation`. Mais `template_platform` et `version_frontend` sont **inconnus et variables**. C'est un système à deux inconnues pour une équation — mathématiquement sous-déterminé.
+
+**[Inférence Logique]** Les invariants de contenu ne sont pas juste "meilleurs" que les signaux DOM — ils sont **nécessaires** pour que le problème soit soluble en zéro-shot. Sans eux, la seule solution est la mémorisation de templates par plateforme et par version. Avec eux, `data_conversation` se reconstruit par ses propriétés intrinsèques, indépendamment de `template_platform` et `version_frontend`.
+
+**[Fait Observé]** ACE a implicitement choisi la stratégie de mémorisation de templates — `SemanticClassProbe` liste des patterns comme `user(-|_)?message`, `assistant(-|_)?(message|turn)`. C'est une **liste de templates codée en dur**.
+
+```ACE->OCR/ace/engine/heuristic.py#L42-46
+user_pattern = re.compile(r'\b(user|human|you)(-|_)?message\b', re.I)
+bot_pattern = re.compile(r'\b(assistant|model|ai|bot|agent)(-|_)?(message|turn)\b', re.I)
+```
+
+**[Inférence Logique]** Cette liste a un comportement de dégradation **discret et silencieux** : tant qu'une plateforme utilise un terme de la liste, ça fonctionne. Dès qu'elle ne le fait plus, ça échoue sans avertissement et sans dégradation progressive. Une approche par invariants de contenu dégraderait continûment et mesurément — la confiance baisserait au fur et à mesure que les signaux s'affaiblissent.
+
+---
+
+## 3. Le JSON output est une promesse structurelle non tenue
+
+**[Fait Observé]** Le format JSON est présenté comme la sortie structurée du système. Voici ce qu'il produit réellement :
+
+```ACE->OCR/ace/main.py#L105-118
+data = {
+    "session": {
+        "turns": [
+            {
+                "role": t.role.value,
+                "content": [{"type": p.type.value, "content": p.content}
+                             for p in t.content]
+            } for t in session.turns
+        ]
+    }
+}
+```
+
+**[Fait Observé]** `p.type.value` est **toujours** `"text"`. `ContentType.CODE`, `ContentType.MATH_BLOCK`, `ContentType.MERMAID` existent dans le modèle mais ne sont jamais assignés à un `MessagePart`.
+`ACE->OCR/ace/main.py:L98`
+`ACE->OCR/ace/models/chat.py:L11-17`
+
+**[Inférence Logique]** Le JSON output produit une structure de ce type, quelle que soit la richesse du document source :
+
+```/dev/null/output_lie.json#L1-10
+{
+  "turns": [
+    {
+      "role": "model",
+      "content": [
+        {"type": "text", "content": "```python\nprint('hello')\n```\n$$E=mc^2$$"}
+      ]
+    }
+  ]
+}
+```
+
+Du code Python et du LaTeX encapsulés dans un `type: "text"` — la structure typée est une façade. Un consommateur de cette sortie JSON (pipeline RAG, second LLM, système d'indexation) ne peut pas distinguer du code d'un paragraphe sans re-parser le Markdown à l'intérieur de `content`. Le système a sérialisé son propre résultat intermédiaire au lieu du résultat final.
+
+**[Inférence Logique]** La reconstruction de `data_conversation` est incomplète par construction : même si la détection était parfaite, la sortie efface la sémantique que le `SanctuaryManager` avait correctement préservée dans `entry.type`. Le pipeline produit `SanctuaryEntry.type = "code"` au niveau du mapping, puis l'abandonne lors de la création du `MessagePart`.
+
+```ACE->OCR/ace/core/sanctuary.py#L34-36
+self.mapping[uuid_key] = SanctuaryEntry(raw_content, "code", formatted)
+```
+
+```ACE->OCR/ace/main.py#L98
+part = MessagePart(type=ContentType.TEXT, content=restored_content)
+```
+
+**[Fait Observé]** L'information de type — `"code"`, `"mermaid"`, `"math"` — est calculée, stockée dans `SanctuaryEntry`, traversée par le pipeline, et silencieusement jetée au dernier moment. C'est la perte de données la plus précise et la plus coûteuse du système : elle survient après que tout le travail difficile est fait.
+

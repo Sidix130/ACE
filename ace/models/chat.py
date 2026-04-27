@@ -43,3 +43,20 @@ class ChatSession:
     created_at: Optional[datetime] = field(default_factory=datetime.now)
     turns: List[Turn] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class ExtractionOptions:
+    detector: str = "topo"  # topo, heuristic, flux
+    format: str = "md"      # md, json, yaml
+    frontmatter: bool = False
+    debug: bool = False
+    quiet: bool = False
+    raw: bool = False
+    no_table: bool = False
+
+@dataclass
+class ExtractionResult:
+    content: str
+    format: str
+    session: ChatSession
+    debug_data: Dict[str, Any] = field(default_factory=dict)

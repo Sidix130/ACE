@@ -1,8 +1,6 @@
 # Makefile pour ACE (Adaptive Chat Extractor)
 
-.PHONY: help setup test clean run install
-
-# ... (reste inchangé)
+.PHONY: help setup test clean run install b
 
 install: setup
 	$(PIP) install -e .
@@ -18,8 +16,8 @@ help:
 	@echo "Usage:"
 	@echo "  make setup    : Crée l'environnement virtuel et installe les dépendances"
 	@echo "  make test     : Lance la suite complète de tests unitaires"
-	@echo "  make clean    : Supprime l'environnement virtuel et les fichiers temporaires"
 	@echo "  make run IN=<file.html> OUT=<file.md> : Lance la conversion d'un fichier"
+	@echo "  make b   : Génère un bundle Repomix optimisé pour l'audit"
 
 setup:
 	python3 -m venv $(VENV)
@@ -39,4 +37,7 @@ run:
 		echo "Erreur : Spécifiez IN et OUT. Exemple: make run IN=chat.html OUT=chat.md"; \
 		exit 1; \
 	fi
-	PYTHONPATH=. $(PYTHON) $(MAIN) $(IN) $(OUT)
+	PYTHONPATH=. $(PYTHON) $(MAIN) "$(IN)" "$(OUT)"
+
+b:
+	repomix --ignore "input/**,venv/**,__pycache__/**,.git/**,dist/**,build/**,*.egg-info/**,conversations.json,user.json,*.zip,*.html.md,repomix-output.xml,demo_grok_*.md,extres-demo-grok.md,test_chat.*,*.html,*.json" --include "ace/**,tests/**,README.md,pyproject.toml" --style xml -o repomix-output-opti.xml

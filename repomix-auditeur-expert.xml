@@ -1,0 +1,542 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+The content has been processed where empty lines have been removed.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: ace/main.py, ace/engine/detector.py, ace/models/chat.py, scripts/diagnose_chms.py, docs/autres/chat/blockage/log_blocage_chms.md
+- Files matching these patterns are excluded: **/__pycache__/**, **/*.pyc, legacy/**, tests/**, debug/**, docs/**/!(log_blocage_chms.md)
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Empty lines have been removed from all files
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+ace/
+  engine/
+    detector.py
+  models/
+    chat.py
+  main.py
+docs/
+  autres/
+    chat/
+      blockage/
+        log_blocage_chms.md
+scripts/
+  diagnose_chms.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="docs/autres/chat/blockage/log_blocage_chms.md">
+# Journal de Bord : Blocages d'Extraction (Forensic Log) - CHMS
+
+Ce journal documente les points de rupture identifiés lors de l'extraction du fichier `CHMS_Causal-Hybrid-Mapping-System.html`. Chaque point est sourcé par des données de log et pondéré par un indice de confiance (IC).
+
+---
+
+## 🛑 Blocage A : Fragmentation par Incompatibilité de Signature
+Le détecteur isole les éléments au lieu de les voir comme un flux continu.
+
+- **Preuve Objective** : 
+    - Le nœud `li[kery7j]` possède la signature `li[](p:1)`.
+    - Le nœud `h1[fhiouf]` possède la signature `h1[](None)`.
+    - Ces deux nœuds appartiennent au même flux sémantique mais sont placés dans des clusters différents par `TopologicalDetector:L145`.
+- **Analyse du Score** : Cluster 186 (contenant `li[v2xdrv]`) a un score de **18.00**, tandis que le bruit structurel (Cluster 160) a un score de **11508.75**.
+- **Indice de Confiance (IC)** : **1.0 (Certain)**
+    - *Justification* : Observé directement dans le dump de signatures du script `diagnose_chms.py`. La condition de stricte compatibilité des signatures empêche le regroupement des éléments hétérogènes (titres, listes, paragraphes).
+
+---
+
+## 🛑 Blocage B : Domination du Wrapper Global (Sur-Scoring)
+Le détecteur préfère le conteneur global au contenu granulaire.
+
+- **Preuve Objective** : 
+    - Cluster 160 : `main[flex-1+min-h-0](div:1)` -> Score: **11508.75**.
+    - Cluster 161 : `div[flex+flex-col+group/thread+min-h-full](div:1)` -> Score: **11508.75**.
+- **Analyse du Score** : La densité textuelle de ces nœuds ( > 15 000 mots) écrase les micro-signaux des messages individuels. L'algorithme sélectionne ces wrappers comme étant "le meilleur cluster" car ils contiennent mathématiquement tout le texte.
+- **Indice de Confiance (IC)** : **0.95 (Très élevé)**
+    - *Justification* : Le `max(final_clusters, key=self._score_cluster)` sélectionne fatalement le nœud le plus haut dans l'arbre qui respecte la répétition minimale. Le "Winner-takes-all" est ici toxique pour la granularité.
+
+---
+
+## 🛑 Blocage C : Échec de la Détection de Flux (Missing Fallback)
+Le format "flat" (ChatGPT modern) n'active pas le fallback Lithos.
+
+- **Preuve Objective** : L'algorithme détecte **1 tour** (le lien de navigation). Puisque `len(blocks) > 0`, la condition `if not blocks` (`main.py:51`) ne se déclenche jamais.
+- **Analyse du Score** : Un seul "faux positif" suffit à désactiver la protection par fallback sur le body.
+- **Indice de Confiance (IC)** : **0.90 (Élevé)**
+    - *Justification* : Observé dans `report.md`. Le système se croit victorieux en trouvant un lien, ignorant les 2500 autres candidats potentiels.
+
+---
+
+## 🧪 Tests de Vérification Objective
+Pour chaque point ci-dessus, le test suivant est réalisable :
+1. **Test A** : Modifier `_are_signatures_compatible` pour autoriser `p` et `li` contigus -> Vérifier si le score du cluster augmente.
+2. **Test B** : Appliquer un plafond (cap) de score sur la densité textuelle brute dans `_score_cluster`.
+3. **Test C** : Introduire un `Coverage Ratio` (Texte Cluster / Texte Total) ; si < 10%, forcer la détection multi-cluster ou `flux`.
+</file>
+
+<file path="scripts/diagnose_chms.py">
+import sys
+import re
+from bs4 import BeautifulSoup, Tag
+from typing import List, Dict, Any, Optional
+from collections import defaultdict
+# Mock models to avoid imports issues
+from ace.engine.detector import TopologicalDetector
+class DeepTopologicalInspector(TopologicalDetector):
+    def __init__(self, min_density=3):
+        super().__init__(min_density)
+        self.logs = []
+    def log(self, message):
+        self.logs.append(message)
+        print(message)
+    def diagnose(self, html_path):
+        with open(html_path, 'r', encoding='utf-8') as f:
+            soup = BeautifulSoup(f.read(), 'html.parser')
+        # 0. Simulate candidate identification
+        candidates = []
+        for tag in soup.find_all(True):
+            if tag.name in ['html', 'body', 'script', 'style', 'head']: continue
+            dens = self._text_density(tag)
+            has_uuid = self.uuid_pattern.search(tag.get_text())
+            if dens >= self.min_density or has_uuid:
+                candidates.append(tag)
+        self.log(f"Total candidates found: {len(candidates)}")
+        # 1. Clustering with verbose logs
+        clusters = []
+        for cand in candidates:
+            added = False
+            sig = self._compute_signature(cand)
+            for cluster in clusters:
+                ref_sig = self._compute_signature(cluster[0])
+                if cluster[0].parent == cand.parent and self._are_signatures_compatible(ref_sig, sig):
+                    cluster.append(cand)
+                    added = True
+                    break
+            if not added:
+                clusters.append([cand])
+        # 2. Score each cluster
+        scored_clusters = []
+        for i, cluster in enumerate(clusters):
+            score = self._score_cluster(cluster)
+            sig = self._compute_signature(cluster[0])
+            snippet = cluster[0].get_text(strip=True)[:50]
+            parent_sig = self._compute_signature(cluster[0].parent) if cluster[0].parent else "None"
+            scored_clusters.append({
+                "id": i,
+                "score": score,
+                "size": len(cluster),
+                "sig": sig,
+                "parent_sig": parent_sig,
+                "snippet": snippet,
+                "avg_density": sum(self._text_density(t) for t in cluster) / len(cluster)
+            })
+        # Sort by score
+        scored_clusters.sort(key=lambda x: x["score"], reverse=True)
+        self.log("\n--- TOP CLUSTERS (Evidence) ---")
+        for sc in scored_clusters[:10]:
+            self.log(f"Cluster {sc['id']}: Score={sc['score']:.2f}, Size={sc['size']}, Density={sc['avg_density']:.1f}")
+            self.log(f"  Signature: {sc['sig']}")
+            self.log(f"  Snippet: {sc['snippet']}")
+        # Search for specific content tags (CHMS specific)
+        self.log("\n--- SPECIFIC CONTENT SEARCH (data-section-id) ---")
+        content_nodes = soup.find_all(attrs={'data-section-id': True})
+        self.log(f"Nodes with 'data-section-id': {len(content_nodes)}")
+        for node in content_nodes[:5]:
+            node_sig = self._compute_signature(node)
+            # Find which cluster this node belongs to
+            target_cluster = None
+            for sc in scored_clusters:
+                # We need to find the cluster by searching through clusters list
+                orig_cluster = clusters[sc['id']]
+                if node in orig_cluster:
+                    target_cluster = sc
+                    break
+            if target_cluster:
+                self.log(f"Node {node.name}[{node.get('data-section-id')}]: Contained in Cluster {target_cluster['id']} (Score={target_cluster['score']:.2f})")
+            else:
+                self.log(f"Node {node.name}[{node.get('data-section-id')}]: MISSING from any cluster (Signature: {node_sig})")
+if __name__ == "__main__":
+    inspector = DeepTopologicalInspector()
+    inspector.diagnose("/home/sidix/dev_focus/labs/focus/CHMS_Causal-Hybrid-Mapping-System/CHMS_Causal-Hybrid-Mapping-System.html")
+</file>
+
+<file path="ace/engine/detector.py">
+from bs4 import BeautifulSoup, Tag
+from typing import List, Dict, Any, Optional
+import re
+from collections import defaultdict
+class TopologicalDetector:
+    """
+    Détecteur universel basé sur la topologie du DOM et le clustering structurel.
+    Implémente la spécification V2 pour une détection agnostique aux plateformes.
+    """
+    def __init__(self, min_density: int = 3):
+        self.min_density = min_density
+        self.uuid_pattern = re.compile(r'__ACE_[A-Z]+_[a-f0-9]{8}__')
+    def _text_density(self, tag: Tag) -> int:
+        """Calcule le nombre de mots dans le tag."""
+        return len(tag.get_text(strip=True).split())
+    def _compute_signature(self, tag: Tag) -> str:
+        """Génère une signature structurelle enrichie et normalisée."""
+        name = tag.name
+        # Classes CSS épurées (sans suffixes dynamiques)
+        classes = tag.get('class', [])
+        if isinstance(classes, str): classes = [classes]
+        normalized_classes = []
+        for c in classes:
+            base = re.sub(r'[_-]?[a-f0-9]{6,}', '', c)
+            base = re.sub(r'[_-]?\d{4,}', '', base)
+            if base: normalized_classes.append(base)
+        class_sig = '+'.join(sorted(normalized_classes))
+        # Enfants directs par type
+        child_counts = {}
+        for child in tag.find_all(recursive=False):
+            child_counts[child.name] = child_counts.get(child.name, 0) + 1
+        children_sig = ','.join(f"{k}:{v}" for k,v in sorted(child_counts.items()))
+        # Attributs sémantiques
+        role = tag.get('role', '')
+        testid = tag.get('data-testid', '')
+        attr_sig = f"r={role};t={testid}" if role or testid else ""
+        return f"{name}[{class_sig}]({children_sig}){attr_sig}"
+    def _spacing_regularity_score(self, group: List[Tag]) -> float:
+        """Calcule la régularité de l'espacement des nœuds au sein de leur parent."""
+        if len(group) < 3: return 1.0
+        parent = group[0].parent
+        if not parent: return 0.1
+        all_children = [c for c in parent.children if isinstance(c, Tag)]
+        try:
+            indices = [all_children.index(tag) for tag in group]
+        except ValueError:
+            return 0.1
+        gaps = [indices[i+1] - indices[i] for i in range(len(indices)-1)]
+        if not gaps: return 1.0
+        mean_gap = sum(gaps) / len(gaps)
+        variance = sum((g - mean_gap)**2 for g in gaps) / len(gaps)
+        return 1.0 / (1.0 + variance)
+    def _score_cluster(self, cluster: List[Tag]) -> float:
+        """Score composite pour classer les clusters candidats."""
+        n = len(cluster)
+        if n == 0: return 0.0
+        avg_density = sum(self._text_density(t) for t in cluster) / n
+        regularity = self._spacing_regularity_score(cluster)
+        # Signal de richesse de contenu (propres aux conversations LLM)
+        richness = 1.0
+        for t in cluster:
+            if t.find(['pre', 'code', 'table', 'blockquote', 'h1', 'h2', 'h3', 'math']):
+                richness += 0.5
+        richness = min(richness, 3.0) # Cap à 3x
+        # Signal UUID ACE (Preservation du Sanctuaire)
+        uuid_bonus = 1.5 if any(self.uuid_pattern.search(t.get_text()) for t in cluster) else 1.0
+        # Pénalité pour les patterns UI (Bannières, Modales, Pieds de page)
+        ui_penalty = 1.0
+        for t in cluster:
+            # Recherche d'attributs suspects
+            parent_attrs = str(t.parent.attrs).lower() if t.parent else ""
+            self_attrs = str(t.attrs).lower() if t.attrs else ""
+            if any(kw in self_attrs or kw in parent_attrs for kw in ['cookie', 'banner', 'dialog', 'modal', 'footer', 'nav', 'menu']):
+                ui_penalty *= 0.5
+                break # Une seule pénalité suffit
+        # Score final : on favorise n > 1
+        n_factor = n if n > 1 else 0.5
+        return n_factor * avg_density * regularity * richness * uuid_bonus * ui_penalty
+    def _are_signatures_compatible(self, sig1: str, sig2: str) -> bool:
+        """Détermine si deux signatures sont assez proches pour appartenir au même cluster."""
+        if sig1 == sig2: return True
+        parts_re = re.compile(r'^(\w+)\[(.*?)\]\((.*?)\)(.*)$')
+        m1 = parts_re.match(sig1)
+        m2 = parts_re.match(sig2)
+        if m1 and m2:
+            # Même tag requis
+            if m1.group(1) == m2.group(1):
+                # Si même structure d'enfants, on vérifie un minimum de similarité de classes
+                if m1.group(3) == m2.group(3):
+                    c1 = set(m1.group(2).split('+')) if m1.group(2) else set()
+                    c2 = set(m2.group(2).split('+')) if m2.group(2) else set()
+                    # Si l'un a des classes et l'autre non, ou si classes totalement différentes : méfiance
+                    if c1 and c2 and not (c1 & c2):
+                        return False
+                    return True
+        return False
+    def detect(self, soup: BeautifulSoup) -> List[Tag]:
+        """Détecte les blocs de message via clustering topologique et analyse de flux."""
+        # 0. Nettoyage : Exclure les éléments UI évidents (Bannières, Dialogues)
+        for noise in soup.find_all(attrs={"role": ["dialog", "banner", "navigation"]}):
+            noise.decompose()
+        # On ne décompose pas tout le body, juste les overlays probables
+        for noise in soup.find_all(class_=re.compile(r'cookie|modal|overlay|popup', re.I)):
+            if noise.name != 'body':
+                noise.decompose()
+        # 1. Identifier tous les candidats par densité (Tous les tags sont permis si denses)
+        candidates = []
+        for tag in soup.find_all(True): # True pour tous les tags
+            if tag.name in ['html', 'body', 'script', 'style', 'head']: continue
+            if self._text_density(tag) >= self.min_density or self.uuid_pattern.search(tag.get_text()):
+                candidates.append(tag)
+        if not candidates: return []
+        # 2. Clustering par signature et parent (Gestion des "Box" chats)
+        clusters = []
+        for cand in candidates:
+            added = False
+            sig = self._compute_signature(cand)
+            for cluster in clusters:
+                if cluster[0].parent == cand.parent and self._are_signatures_compatible(self._compute_signature(cluster[0]), sig):
+                    cluster.append(cand)
+                    added = True
+                    break
+            if not added:
+                clusters.append([cand])
+        # 2b. AJOUT : Gestion des "Stream" chats (Grok)
+        # Si un parent contient des <hr> séparant des candidats, c'est un signal très fort
+        for parent in set(c.parent for c in candidates if c.parent):
+            hr_count = len(parent.find_all('hr', recursive=False))
+            if hr_count >= 1:
+                # On regroupe les enfants significatifs du parent comme un cluster
+                stream_cluster = [c for c in parent.find_all(recursive=False) if (c in candidates or c.name in ['h3', 'blockquote'])]
+                if len(stream_cluster) > 2:
+                    clusters.append(stream_cluster)
+        if not clusters: return []
+        # 3. Élimination des clusters redondants
+        final_clusters = []
+        for c1 in clusters:
+            is_redundant = False
+            for c2 in clusters:
+                if c1 is c2: continue
+                # Si c1 est contenu dans c2
+                if all(any(node is ancestor or node in getattr(ancestor, 'descendants', []) for ancestor in c2) for node in c1):
+                    # RÈGLE DE GRANULARITÉ : 
+                    # Si c1 (le contenu plus profond) a autant ou plus d'éléments (n) que c2
+                    # ET que c1 n'est pas juste un wrapper unique
+                    if len(c1) >= len(c2) and len(c1) > 1:
+                        # On garde la granularité
+                        continue
+                    else:
+                        if self._score_cluster(c2) >= self._score_cluster(c1):
+                            is_redundant = True
+                            break
+            if not is_redundant:
+                final_clusters.append(c1)
+        if not final_clusters: return []
+        # 4. Sélection du meilleur cluster
+        best_cluster = max(final_clusters, key=self._score_cluster)
+        # 5. Ordonnancement chronologique
+        return sorted(best_cluster, key=lambda t: t.sourceline or 0)
+</file>
+
+<file path="ace/models/chat.py">
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import uuid
+class Role(Enum):
+    USER = "user"
+    MODEL = "model"
+    SYSTEM = "system"
+class ContentType(Enum):
+    TEXT = "text"
+    CODE = "code"
+    MATH_INLINE = "math_inline"
+    MATH_BLOCK = "math_block"
+    MERMAID = "mermaid"
+    TABLE = "table"
+    IMAGE = "image"
+@dataclass
+class MessagePart:
+    type: ContentType
+    content: str
+    language: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+@dataclass
+class Turn:
+    index: int
+    role: Role
+    content: List[MessagePart]
+    confidence: float
+    timestamp: Optional[datetime] = None
+    raw_html: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+@dataclass
+class ChatSession:
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    source: Optional[str] = None
+    title: Optional[str] = None
+    created_at: Optional[datetime] = field(default_factory=datetime.now)
+    turns: List[Turn] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+@dataclass
+class ExtractionOptions:
+    detector: str = "topo"  # topo, heuristic, flux
+    format: str = "md"      # md, json, yaml
+    frontmatter: bool = False
+    debug: bool = False
+    quiet: bool = False
+    raw: bool = False
+    no_table: bool = False
+@dataclass
+class ExtractionResult:
+    content: str
+    format: str
+    session: ChatSession
+    debug_data: Dict[str, Any] = field(default_factory=dict)
+</file>
+
+<file path="ace/main.py">
+import json
+try:
+    import yaml
+except ImportError:
+    yaml = None
+from datetime import datetime
+from bs4 import BeautifulSoup
+from typing import List, Dict, Any, Optional
+from ace.core.sanctuary import SanctuaryManager
+from ace.engine.detector import TopologicalDetector
+from ace.engine.inferencer import RoleInferrer
+from ace.engine.converter import MarkdownDispatcher
+from ace.models.chat import Role, Turn, ChatSession, MessagePart, ContentType, ExtractionOptions, ExtractionResult
+def process_html(html_content: str, options: Optional[ExtractionOptions] = None) -> ExtractionResult:
+    """Orchestre le pipeline complet d'extraction et de conversion."""
+    if options is None:
+        options = ExtractionOptions()
+    if options.format == 'yaml' and yaml is None:
+        raise ImportError("PyYAML est requis pour le format YAML. Installez-le avec 'pip install PyYAML'.")
+    soup = BeautifulSoup(html_content, 'html.parser')
+    debug_data = {}
+    # 1. Sanctuaire (Extraction & Protection)
+    sanctuary = SanctuaryManager()
+    mapping = {}
+    if not options.raw:
+        mapping = sanctuary.extract(soup)
+        if options.debug:
+            # Sérialisation sécurisée du mapping pour le diagnostic
+            debug_data['sanctuary_map'] = {
+                k: v.to_dict() if hasattr(v, 'to_dict') else str(v) 
+                for k, v in mapping.items()
+            }
+    # 2. Détermination de la stratégie de détection
+    if options.detector in ['topo', 'topological']:
+        detector = TopologicalDetector()
+    elif options.detector in ['heuristic', 'flux']:
+        raise NotImplementedError(f"La stratégie '{options.detector}' n'est pas encore implémentée dans cette version.")
+    else:
+        raise ValueError(f"Stratégie de détection inconnue : {options.detector}")
+    blocks = detector.detect(soup)
+    # Fallback Lithos : si aucun bloc n'est détecté, on prend le body comme bloc unique
+    if not blocks:
+        body = soup.find('body')
+        if body:
+            blocks = [body]
+            if not options.quiet:
+                import sys
+                print("⚠️  Avertissement : Aucun bloc de conversation détecté. Utilisation du fallback (corps entier).", file=sys.stderr)
+    if options.debug:
+        debug_data['detected_blocks_count'] = len(blocks)
+    # 3. Traitement des tours
+    inferrer = RoleInferrer()
+    # Support de l'option no_table via le dispatcher
+    dispatcher = MarkdownDispatcher(process_tables=not options.no_table)
+    session = ChatSession()
+    session.turns = []
+    for i, block in enumerate(blocks):
+        # Inférence du rôle
+        role, confidence = inferrer.infer(block, context=session.turns)
+        # Conversion Markdown (les UUID sont préservés)
+        md_content = dispatcher.convert(block)
+        # CRITIQUE LITHOS : Restauration des UUID pour chaque partie de message
+        if not options.raw:
+            restored_content = sanctuary.restore(md_content, mapping)
+        else:
+            restored_content = md_content
+        # Création du tour (On pourrait segmenter ici à l'avenir)
+        part = MessagePart(type=ContentType.TEXT, content=restored_content)
+        turn = Turn(index=i, role=role, content=[part], confidence=confidence)
+        session.turns.append(turn)
+    # 4. Génération du résultat selon le format
+    content = ""
+    if options.format == 'json':
+        data = {
+            "session": {
+                "id": session.id,
+                "turns": [
+                    {
+                        "index": t.index,
+                        "role": t.role.value,
+                        "confidence": t.confidence,
+                        "content": [{"type": p.type.value, "content": p.content} for p in t.content]
+                    } for t in session.turns
+                ]
+            }
+        }
+        content = json.dumps(data, indent=2, ensure_ascii=False)
+    elif options.format == 'yaml':
+        data = {
+            "session": {
+                "id": session.id,
+                "turns": [
+                    {
+                        "index": t.index,
+                        "role": t.role.value,
+                        "content": [{"type": p.type.value, "content": p.content} for p in t.content]
+                    } for t in session.turns
+                ]
+            }
+        }
+        content = yaml.dump(data, allow_unicode=True, sort_keys=False)
+    else:
+        # Markdown par défaut
+        full_md = ""
+        if options.frontmatter:
+            full_md += "---\n"
+            full_md += f"title: {session.title or 'ACE Extraction'}\n"
+            full_md += f"date: {datetime.now().isoformat()}\n"
+            full_md += f"turns_count: {len(session.turns)}\n"
+            full_md += "---\n\n"
+        for turn in session.turns:
+            role_label = "User" if turn.role == Role.USER else "MODEL"
+            full_md += f"## {role_label}\n\n"
+            for part in turn.content:
+                full_md += part.content + "\n"
+            full_md += "\n---\n\n"
+        # Nettoyage final
+        content = full_md.replace('\n\n\n', '\n\n')
+    return ExtractionResult(content=content, format=options.format, session=session, debug_data=debug_data)
+</file>
+
+</files>

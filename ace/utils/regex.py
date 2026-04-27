@@ -16,7 +16,7 @@ MERMAID_KEYWORDS = [
 ]
 
 MERMAID_DETECTION_RE = re.compile(
-    r'(?:^|\n)(?:}}%%|%%{.*?\}%%)?\s*(' + '|'.join(MERMAID_KEYWORDS) + r')\b',
+    r'^\s*(?:}}%%|%%{.*?\}%%)?\s*(' + '|'.join(MERMAID_KEYWORDS) + r')\b',
     re.MULTILINE | re.IGNORECASE
 )
 

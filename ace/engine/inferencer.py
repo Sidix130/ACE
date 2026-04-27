@@ -1,5 +1,5 @@
 from bs4 import Tag
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 from ace.models.chat import Role
 import re
 
@@ -50,6 +50,3 @@ class RoleInferrer:
             else:
                 # Premier message du chat -> Souvent User
                 return Role.USER, 0.4
-
-# Import différé pour éviter les cycles si nécessaire
-from typing import Any

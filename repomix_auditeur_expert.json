@@ -1,0 +1,31 @@
+{
+  "output": {
+    "filePath": "repomix-auditeur-expert.xml",
+    "style": "xml",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "topFilesLength": 0,
+    "showLineNumbers": false,
+    "includeEmptyDirectories": false
+  },
+  "include": [
+    "ace/main.py",
+    "ace/engine/detector.py",
+    "ace/models/chat.py"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/__pycache__/**",
+      "**/*.pyc",
+      "legacy/**",
+      "tests/**",
+      "debug/**",
+      "docs/**/!(log_blocage_chms.md)"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

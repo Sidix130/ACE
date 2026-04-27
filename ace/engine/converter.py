@@ -3,7 +3,8 @@ from ace.processors.tables import convert_table
 import re
 
 class MarkdownDispatcher:
-    def __init__(self):
+    def __init__(self, process_tables: bool = True):
+        self.process_tables = process_tables
         self.handlers = {
             'p': self._handle_p,
             'h1': self._handle_header,
@@ -23,6 +24,9 @@ class MarkdownDispatcher:
             'em': self._handle_inline,
             'i': self._handle_inline,
             'code': self._handle_code_inline,
+            'a': self._handle_a,
+            'img': self._handle_img,
+            'blockquote': self._handle_blockquote,
         }
 
     def convert(self, tag: Tag) -> str:
@@ -76,7 +80,9 @@ class MarkdownDispatcher:
         return "\n---\n"
 
     def _handle_table(self, tag: Tag) -> str:
-        return convert_table(tag)
+        if self.process_tables:
+            return convert_table(tag)
+        return f"\n{self._handle_generic(tag)}\n"
 
     def _handle_inline(self, tag: Tag) -> str:
         sym = "**" if tag.name in ['strong', 'b'] else "*"
@@ -88,3 +94,28 @@ class MarkdownDispatcher:
         if re.match(r'^__ACE_[A-Z]+_[a-f0-9]{8}__$', content):
             return content
         return f"`{content}`"
+
+    def _handle_a(self, tag: Tag) -> str:
+        """Gère les hyperliens [texte](url)."""
+        href = tag.get('href', '')
+        text = self._handle_generic(tag).strip()
+        if href and text:
+            return f"[{text}]({href})"
+        return text or href
+
+    def _handle_img(self, tag: Tag) -> str:
+        """Gère les images ![alt](src)."""
+        src = tag.get('src', '')
+        alt = tag.get('alt', '')
+        if src:
+            return f"![{alt}]({src})"
+        return ""
+
+    def _handle_blockquote(self, tag: Tag) -> str:
+        """Gère les citations avec >."""
+        content = self._handle_generic(tag).strip()
+        if not content:
+            return ""
+        lines = content.split('\n')
+        quoted = '\n'.join(f"> {line}" for line in lines)
+        return f"\n{quoted}\n"

@@ -1,0 +1,31 @@
+{
+  "output": {
+    "filePath": "repomix-output-opti.xml",
+    "format": "xml"
+  },
+  "exclude": {
+    "patterns": [
+      "venv/**",
+      "__pycache__/**",
+      "node_modules/**",
+      ".git/**",
+      "dist/**",
+      "build/**",
+      "*.egg-info/**",
+      ".pytest_cache/**",
+      "debug/**",
+      "input/**",
+      "conversations.json",
+      "user.json",
+      "*.zip",
+      "*.html.md",
+      "repomix-output.xml",
+      "demo_grok_*.md",
+      "extres-demo-grok.md",
+      "test_chat.*",
+      "*.html",
+      "*.json",
+      "!repomix.config.json"
+    ]
+  }
+}

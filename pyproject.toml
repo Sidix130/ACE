@@ -2,8 +2,10 @@
 name = "ace"
 version = "0.1.0"
 description = "Adaptive Chat Extractor - Une solution universelle pour l'extraction de conversations HTML."
+requires-python = ">=3.9"
 dependencies = [
     "beautifulsoup4",
+    "PyYAML",
 ]
 
 [project.optional-dependencies]
@@ -12,7 +14,7 @@ dev = [
 ]
 
 [project.scripts]
-ace = "ace.main:main"
+ace = "ace.cli:main"
 
 [tool.setuptools]
 packages = ["ace"]

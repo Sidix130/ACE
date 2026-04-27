@@ -1,0 +1,91 @@
+## Analyse du fichier cible
+
+Le fichier @Carte du pouvoir mondial 2026. _ Google AI Studio.html.md est une page HTML complète générée par Google AI Studio. Il contient :
+
+- **En-tête et métadonnées** : balises `<head>` avec styles, scripts, liens, etc. (bruit)
+- **Corps de la page** : interface de chat avec une conversation entre l’utilisateur et le modèle Gemini.
+- **Conversation** : structurée dans des balises Angular personnalisées (`<ms-chat-turn>`, `<ms-prompt-chunk>`, `<ms-text-chunk>`, `<ms-cmark-node>`, etc.). Chaque tour alterne entre l’utilisateur (classe `user`) et le modèle (classe `model`).
+- **Contenu textuel** : présent dans des balises `<p>`, `<h3>`, `<h4>`, `<ul>`, `<ol>`, `<li>`, etc., souvent encapsulé dans `<ms-cmark-node>`.
+- **Éléments superflus** : scripts (JavaScript), styles CSS, commentaires, attributs Angular, événements, notifications, tooltips, etc.
+
+La conversation est longue et technique : l’utilisateur demande une **audit critique d’une infographie** (« Carte Réelle du Pouvoir Mondial »), puis le modèle développe une méthodologie systémique pour cartographier les nœuds de pouvoir mondial. Plusieurs échanges itératifs affinent l’approche.
+
+---
+
+## Stratégie de nettoyage
+
+### Objectif
+
+Extraire l’intégralité de la conversation en conservant :
+
+- Les messages utilisateur (intitulés « User »)
+- Les réponses du modèle (intitulées « Model »), y compris les sections « Thoughts » (raisonnement interne) et le contenu final.
+- La structure hiérarchique (titres, sous-titres, listes, paragraphes).
+- Les liens pertinents (très peu dans ce cas, mais à garder s’ils apparaissent).
+
+### Outils recommandés
+
+- **Python** avec `BeautifulSoup` (analyse HTML robuste) + `html5lib` (tolérant)
+- **Expressions régulières** en complément pour les cas particuliers (ex. attributs dynamiques)
+- **Nettoyage manuel** final pour vérifier la cohérence
+
+### Étapes du nettoyage automatique
+
+1. **Charger le fichier HTML** avec BeautifulSoup.
+2. **Supprimer les balises inutiles** :
+   - `<script>`, `<style>`, `<meta>`, `<link>`, `<noscript>`, `<iframe>`, `<template>`, `<svg>`, `<path>`, etc.
+   - Les attributs Angular, `_ngcontent-*`, `mat-*`, `cdk-*`, `jslog`, etc.
+   - Les commentaires HTML.
+3. **Extraire les blocs de conversation** :
+   - Trouver tous les `<ms-chat-turn>`.
+   - Pour chaque tour, déterminer le rôle (`user` ou `model`) via la classe ou l’attribut `data-turn-role`.
+   - Récupérer le texte contenu dans les balises `<ms-text-chunk>` (qui contiennent le vrai contenu Markdown/HTML).
+   - Conserver la structure des titres (`<h1>` à `<h6>`), des listes (`<ul>`, `<ol>`, `<li>`) et des paragraphes (`<p>`).
+   - Pour les tours du modèle, extraire également les « Thoughts » (balises `<ms-thought-chunk>` avec leurs `<mat-expansion-panel>`). Le texte des pensées est dans `<ms-text-chunk>` à l’intérieur.
+4. **Convertir le HTML extrait en Markdown** (optionnel mais lisible) :
+   - Utiliser `html2text` ou une conversion manuelle (ex. transformer `<h3>` en `###`, `<li>` en `-`, etc.).
+5. **Nettoyer les espaces superflus** et les lignes vides.
+
+### Exemple de code Python (pseudo)
+
+```python
+from bs4 import BeautifulSoup
+import re
+
+with open('fichier.html', 'r', encoding='utf-8') as f:
+    soup = BeautifulSoup(f, 'html.parser')
+
+# Suppression des balises inutiles
+for tag in soup(['script', 'style', 'meta', 'link', 'noscript', 'iframe', 'template', 'svg']):
+    tag.decompose()
+
+# Nettoyage des attributs Angular
+for tag in soup.find_all(True):
+    tag.attrs = {k: v for k, v in tag.attrs.items() if not k.startswith('_') and not k.startswith('ng-')}
+
+# Extraction des tours
+turns = []
+for turn in soup.find_all('ms-chat-turn'):
+    role = turn.get('data-turn-role', turn.get('class', [''])[0])
+    if role not in ['User', 'Model']:
+        continue
+    # Récupérer le texte structuré dans ms-text-chunk
+    content = turn.find('ms-text-chunk')
+    if content:
+        # Convertir le HTML interne en texte avec conservation des balises (pour markdown)
+        text = content.decode_contents()
+        turns.append((role, text))
+
+# Écrire en Markdown
+with open('conversation.md', 'w', encoding='utf-8') as out:
+    for role, text in turns:
+        out.write(f'## {role}\n\n{text}\n\n')
+```
+
+### Alternative sans programmation (manuelle assistée)
+
+- Utiliser un éditeur de texte avec recherche/remplacement regex pour supprimer les balises indésirables.
+- Conserver uniquement le contenu des `<ms-text-chunk>` et les titres.
+- Remplacer les `<br>` par des sauts de ligne, etc.
+
+---

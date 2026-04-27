@@ -1,0 +1,164 @@
+# Faut-il repartir de zéro ? Analyse pragmatique
+
+La question est légitime et la réponse ne peut être binaire. J'ai audité en profondeur le script `clean.py`, la proposition ACE, et esquissé OCE comme une vision idéale. Le choix entre **refactorisation incrémentale** et **réécriture complète** dépend de plusieurs facteurs que je vais détailler.
+
+---
+
+## 1. État des lieux objectif de `clean.py`
+
+### Ce qui fonctionne (relativement)
+
+- **Nettoyage UI** : La suppression des `<script>`, `<style>`, et des classes avec des patterns comme `tooltip` est efficace pour la majorité des exports.
+- **Conversion de base HTML → Markdown** : Pour les paragraphes, titres, listes, liens, le rendu est correct.
+- **Extraction de code** : Les blocs `<pre>` sont bien gérés dans les cas simples.
+- **Support KaTeX partiel** : Sur DeepSeek avec des annotations explicites, cela fonctionne.
+
+### Ce qui est cassé ou fragile
+
+| Composant | Sévérité | Impact |
+|-----------|----------|--------|
+| Détection des tours (`detect_turn_blocks`) | **Critique** | Échec sur 30-40% des exports réels (Grok, AI Studio, certains exports ChatGPT). |
+| Gestion Mermaid | **Critique** | Diagrammes non détectés ou mal wrappés, perte d'information. |
+| Inférence des rôles | **Moyen** | Faux positifs fréquents sur les conversations atypiques. |
+| Suppression agressive de contenu | **Moyen** | Risque de perdre des messages courts légitimes. |
+| Post-traitement LaTeX | **Faible** | Risque de corruption dans du code contenant `\`. |
+
+### Complexité cyclomatique et maintenabilité
+
+- **370 lignes** avec des fonctions de 50+ lignes.
+- **0 tests**.
+- **Dépendances implicites** entre les fonctions (ex: `extract_code_blocks` attend un tag copié, `post_process_markdown` corrige les erreurs de conversion).
+
+**Conclusion** : Le script est un prototype fonctionnel pour un sous-ensemble d'exports, mais il n'est **ni fiable ni maintenable** pour un usage général.
+
+---
+
+## 2. Coûts et bénéfices d'une réécriture complète (OCE)
+
+### Bénéfices
+
+- **Fiabilité** : Les algorithmes par clustering et sanctuarisation résolvent les problèmes racines.
+- **Extensibilité** : Ajouter un nouveau site prend 5 minutes (fichier YAML ou quelques lignes de Python).
+- **Testabilité** : La couverture de tests garantit que les modifications futures ne cassent rien.
+- **Évolutivité** : Le modèle de données riche permet des fonctionnalités futures (recherche, analyse, conversion vers d'autres formats).
+- **Image professionnelle** : Un outil bien architecturé et documenté peut être partagé, voire monétisé.
+
+### Coûts
+
+- **Temps de développement** : Estimation de 2 à 4 semaines à temps partiel pour une V1 fonctionnelle avec les profils principaux.
+- **Courbe d'apprentissage** : Maîtrise des design patterns (Strategy, Factory, Pipeline), des tests unitaires avec fixtures HTML.
+- **Risque de sur-ingénierie** : Construire une usine à gaz pour un besoin initial simple.
+
+---
+
+## 3. Une troisième voie : Refactorisation ciblée et progressive
+
+Il est possible d'améliorer drastiquement `clean.py` sans tout jeter, en adoptant une approche **pragmatique et itérative**. Voici un plan en trois étapes, chacune apportant une valeur immédiate.
+
+### Étape 1 : Corriger les bugs critiques (2-3 jours)
+
+**Objectif** : Rendre le script utilisable sur 90% des exports sans changer l'architecture.
+
+1. **Remplacer `detect_turn_blocks` par une version simplifiée mais robuste** :
+   - Utiliser une liste de sélecteurs CSS probants (`[class*="message"]`, `[class*="turn"]`, `[data-message-author]`).
+   - Si aucun sélecteur ne donne >2 résultats, utiliser l'ancienne heuristique en fallback.
+   - Supprimer les pénalités absurdes (40% de balises texte).
+
+2. **Améliorer la détection Mermaid** :
+   - Modifier `extract_code_blocks` pour chercher aussi dans les `div` avec un pattern plus tolérant (`re.compile(r'(graph|flowchart|sequenceDiagram)')` sans ancrage en début de chaîne).
+   - Ajouter un nettoyage des préfixes (`}}%%`, `%%{init}%%`) avant de wrapper.
+
+3. **Ajouter des logs et un mode debug** :
+   - Écrire dans un fichier `.log` les étapes critiques (blocs détectés, rôles inférés, avertissements).
+   - Option `--debug` pour sauvegarder le HTML après chaque étape de nettoyage.
+
+**Résultat** : Le script fonctionne sur DeepSeek, Grok, et ChatGPT de base. **Sans changer la structure du code**.
+
+### Étape 2 : Extraire les composants critiques (1 semaine)
+
+**Objectif** : Améliorer la testabilité et la maintenabilité sans réécriture massive.
+
+- Créer un module `detector.py` avec la nouvelle fonction de détection et ses helpers.
+- Créer un module `sanctuary.py` contenant `extract_code_blocks` et `restore_code_blocks` sous forme de classe.
+- Ajouter des **tests unitaires** pour ces deux modules avec des fixtures HTML minimales.
+- Garder le reste du code dans `clean.py` mais importer ces modules.
+
+**Bénéfice** : On obtient des composants réutilisables et testés, tout en conservant le script original comme point d'entrée. La dette technique diminue progressivement.
+
+### Étape 3 : Introduire les profils par configuration (1 semaine)
+
+**Objectif** : Éviter de coder en dur les spécificités des sites.
+
+- Créer un fichier `profiles.yaml` :
+
+  ```yaml
+  deepseek:
+    turn_selector: "div.ds-message"
+    cleanup_selectors:
+      - "div.thinking-process"
+    role_classes:
+      user: ["user", "human"]
+      model: ["assistant", "ds-markdown"]
+  ```
+
+- Modifier `clean.py` pour charger ce YAML et appliquer les règles si une correspondance est détectée.
+- Ajouter un argument `--profile` pour forcer un profil.
+
+**Bénéfice** : Support de nouveaux sites sans toucher au code Python. La logique métier est externalisée.
+
+---
+
+## 4. Recommandation personnalisée
+
+### Scénario A : Vous avez besoin d'un outil fiable **maintenant** pour votre usage personnel
+
+**Recommandation** : **Étape 1 + Étape 2 partielle**. Corrigez les bugs critiques et extrayez la détection dans un module testé. Cela vous prendra 3-4 jours et vous aurez un script qui fait le job sur vos exports actuels. Vous pourrez toujours envisager OCE plus tard si le besoin évolue.
+
+### Scénario B : Vous voulez construire un outil **pérenne et partageable** (open source, portfolio)
+
+**Recommandation** : **Réécriture ciblée (OCE light)**. Ne partez pas de zéro, mais réutilisez les parties éprouvées :
+
+- Gardez `strip_ui_noise` et la conversion HTML→MD de base (elle fonctionne).
+- Réécrivez **uniquement** le cœur de détection et le système de sanctuarisation.
+- Adoptez une structure modulaire simple (pas besoin de 15 fichiers).
+- Implémentez des tests pour les nouvelles parties.
+
+**Exemple d'architecture OCE light** :
+
+```
+omni_chat/
+├── extractor.py          # Orchestration (ex-clean.py allégé)
+├── detection.py          # Nouveau détecteur par clustering
+├── sanctuary.py          # Gestion des blocs spéciaux
+├── profiles.yaml         # Configuration par site
+└── tests/
+    ├── test_detection.py
+    └── fixtures/
+```
+
+**Pourquoi ne pas tout réécrire ?**
+
+- La conversion HTML→MD de `clean.py` est déjà meilleure que beaucoup de bibliothèques (elle gère les tableaux, KaTeX).
+- Réécrire le parsing Markdown from scratch est une perte de temps (utilisez plutôt `markdownify` ou améliorez l'existant).
+- Vous avez déjà une base de code qui tourne, capitalisez dessus.
+
+### Scénario C : Vous visez l'excellence et avez du temps (projet passion)
+
+**Recommandation** : Allez sur OCE complet, mais **itérez**. Commencez par le cœur (détection + sanctuaires) en TDD, puis ajoutez les profils, puis la CLI. Vous aurez un outil de référence.
+
+---
+
+## 5. Conclusion : Ne jetez pas le bébé avec l'eau du bain
+
+`clean.py` n'est pas une catastrophe. C'est un **prototype avancé** avec des idées brillantes (scoring, inférence) mais une exécution imparfaite. La proposition ACE est une coquille vide qui déplace la poussière sous le tapis. OCE est une vision idéale mais représente un investissement conséquent.
+
+**Mon conseil concret** :
+
+1. **Ne pas repartir de zéro**.
+2. **Implémenter l'Étape 1** dès aujourd'hui (correction des bugs critiques). Vous verrez immédiatement les bénéfices.
+3. **Mettre en place un test de régression simple** : pour chaque export qui fonctionne, sauvegarder la sortie et comparer après chaque modification.
+4. **Évaluer dans une semaine** : si le script modifié couvre 95% de vos besoins, arrêtez-vous là. Sinon, passez à l'Étape 2.
+
+L'important est de **livrer de la valeur rapidement** tout en posant les fondations d'une amélioration continue. La perfection architecturale viendra avec le temps, si elle est nécessaire.
+
+**Codez d'abord ce qui résout le problème immédiat, puis améliorez la structure.**

@@ -1,0 +1,1356 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: ace/**, tests/**, README.md, pyproject.toml
+- Files matching these patterns are excluded: input/**, venv/**, __pycache__/**, .git/**, dist/**, build/**, *.egg-info/**, conversations.json, user.json, *.zip, *.html.md, repomix-output.xml, demo_grok_*.md, extres-demo-grok.md, test_chat.*, *.html, *.json
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+ace/
+  core/
+    __init__.py
+    sanctuary.py
+  engine/
+    __init__.py
+    converter.py
+    detector.py
+    inferencer.py
+  models/
+    __init__.py
+    chat.py
+  processors/
+    tables.py
+  utils/
+    __init__.py
+    dom.py
+    regex.py
+  __init__.py
+  cli.py
+  main.py
+tests/
+  fixtures/
+    complex_ai_studio_sample.html
+    deepseek_latex_sample.html
+    generic_chat_sample.html
+    grok_mermaid_sample.html
+  __init__.py
+  conftest.py
+  test_atom_00.py
+  test_atom_01a.py
+  test_atom_01b.py
+  test_atom_02.py
+  test_atom_03.py
+  test_atom_04.py
+  test_atom_05.py
+pyproject.toml
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="ace/cli.py">
+import sys
+import argparse
+import enum
+import os
+import json
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+
+from ace.main import process_html
+from ace.models.chat import ExtractionOptions, ExtractionResult
+
+class ExitCode(enum.IntEnum):
+    SUCCESS = 0
+    FILE_NOT_FOUND = 1
+    PARSE_ERROR = 2
+    NO_MESSAGES_DETECTED = 3
+    CONVERSION_ERROR = 4
+    INTERNAL_ERROR = 5
+
+def create_parser():
+    parser = argparse.ArgumentParser(
+        prog='ace',
+        description='ACE - Adaptive Chat Extractor (agnostique et universel)',
+        add_help=False
+    )
+    
+    # Groupes d'options
+    io_group = parser.add_argument_group('Entrée/Sortie')
+    io_group.add_argument('input', help='Fichier HTML ou - pour stdin')
+    io_group.add_argument('output', nargs='?', help='Fichier de sortie (défaut: INPUT.md ou stdout)')
+    io_group.add_argument('-o', '--output', dest='output_opt', help='Spécifie explicitement le fichier de sortie')
+    io_group.add_argument('-f', '--format', choices=['md', 'json', 'yaml'], help='Format de sortie')
+    io_group.add_argument('-j', '--json', action='store_const', const='json', dest='format_opt', help='Sortie JSON')
+    
+    detect_group = parser.add_argument_group('Stratégies de détection')
+    detect_group.add_argument('-t', '--topo', action='store_const', const='topo', dest='detector', default='topo')
+    detect_group.add_argument('-H', '--heuristic', action='store_const', const='heuristic', dest='detector')
+    detect_group.add_argument('-F', '--flux', action='store_const', const='flux', dest='detector')
+    
+    meta_group = parser.add_argument_group('Métadonnées et format')
+    meta_group.add_argument('-m', '--frontmatter', action='store_true', help='Ajoute un en-tête YAML')
+    
+    debug_group = parser.add_argument_group('Diagnostic')
+    debug_group.add_argument('-d', '--debug', action='store_true')
+    debug_group.add_argument('-q', '--quiet', action='store_true')
+    
+    expert_group = parser.add_argument_group('Options Expert')
+    expert_group.add_argument('--raw', action='store_true', help='Désactive le Sanctuaire')
+    expert_group.add_argument('--no-table', action='store_true', help='Désactive le processeur de tableaux')
+    
+    # Aide classique
+    parser.add_argument('-h', '--help', action='help', help='Affiche cette aide')
+    parser.add_argument('--help-strategies', action='store_true', help='Affiche l\'aide sur les stratégies de détection')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
+    
+    return parser
+
+def print_strategies_help():
+    print("""
+Stratégies de détection disponibles :
+  topo      (défaut) Analyse topologique agnostique, fonctionne sur tous les exports récents.
+  heuristic Détection basée sur des motifs courants (fallback pour les vieux exports).
+  flux      Pour les conversations sans conteneur de messages (ex: Grok avec <hr>).
+""")
+
+def determine_output_and_format(args):
+    # 1. Flag explicite -f / --format ou -j
+    format_final = args.format or args.format_opt
+    output_final = args.output_opt or args.output
+    
+    # 2. Si l'entrée est stdin et pas de sortie spécifiée -> stdout
+    if args.input == '-' and not output_final:
+        output_final = '-'
+        
+    # 3. Induction du format par l'extension si spécifiée
+    if not format_final and output_final and output_final != '-':
+        ext = Path(output_final).suffix.lower()
+        if ext == '.json':
+            format_final = 'json'
+        elif ext in ['.yaml', '.yml']:
+            format_final = 'yaml'
+            
+    # Valeur par défaut pour le format
+    if not format_final:
+        format_final = 'md'
+        
+    # 4. Induction du nom de sortie si absent et entrée est un fichier
+    if not output_final and args.input != '-':
+        input_path = Path(args.input)
+        if format_final == 'json':
+            output_final = str(input_path.with_suffix('.json'))
+        elif format_final == 'yaml':
+            output_final = str(input_path.with_suffix('.yaml'))
+        else:
+            output_final = str(input_path.with_suffix('.md'))
+            
+    return output_final, format_final
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+    
+    if args.help_strategies:
+        print_strategies_help()
+        sys.exit(ExitCode.SUCCESS)
+        
+    # Gestion de l'entrée stdin
+    if args.input == '-':
+        html_content = sys.stdin.read()
+        input_name = "stdin"
+    else:
+        input_path = Path(args.input)
+        if not input_path.exists():
+            print(f"Erreur : Le fichier {args.input} n'existe pas.", file=sys.stderr)
+            sys.exit(ExitCode.FILE_NOT_FOUND)
+        html_content = input_path.read_text(encoding="utf-8")
+        input_name = input_path.name
+        
+    output_path_str, format_final = determine_output_and_format(args)
+    
+    # Création des options
+    options = ExtractionOptions(
+        detector=args.detector,
+        format=format_final,
+        frontmatter=args.frontmatter,
+        debug=args.debug,
+        quiet=args.quiet,
+        raw=args.raw,
+        no_table=args.no_table
+    )
+    
+    try:
+        result = process_html(html_content, options)
+        
+        # Gestion du mode debug
+        if options.debug:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            debug_dir = Path(f"ace_debug_{Path(input_name).stem}_{timestamp}")
+            debug_dir.mkdir(exist_ok=True)
+            
+            # meta.json
+            meta = {
+                "version": "1.0",
+                "date": datetime.now().isoformat(),
+                "input": args.input,
+                "options": options.__dict__
+            }
+            (debug_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+            
+            # HTML source
+            (debug_dir / "source.html").write_text(html_content, encoding="utf-8")
+            
+            # Signatures/Clusters (si dispos dans debug_data)
+            for k, v in result.debug_data.items():
+                (debug_dir / f"{k}.json").write_text(json.dumps(v, indent=2), encoding="utf-8")
+                
+            if not options.quiet:
+                print(f"Dossier de diagnostic créé : {debug_dir}", file=sys.stderr)
+
+        # Sortie du résultat
+        if not output_path_str or output_path_str == '-':
+            sys.stdout.write(result.content)
+        else:
+            Path(output_path_str).write_text(result.content, encoding="utf-8")
+            if not options.quiet:
+                print(f"Conversion terminée ({format_final}) : {output_path_str}")
+                
+        sys.exit(ExitCode.SUCCESS)
+        
+    except Exception as e:
+        if not options.quiet:
+            print(f"Erreur lors de la conversion : {e}", file=sys.stderr)
+        if options.debug:
+            import traceback
+            traceback.print_exc()
+        sys.exit(ExitCode.CONVERSION_ERROR)
+
+if __name__ == "__main__":
+    main()
+</file>
+
+<file path="ace/core/__init__.py">
+
+</file>
+
+<file path="ace/core/sanctuary.py">
+from bs4 import BeautifulSoup, Tag, NavigableString
+import hashlib
+import re
+from typing import Dict, Any, List, Set
+from ace.models.chat import ContentType
+from ace.utils.regex import MERMAID_DETECTION_RE
+
+class SanctuaryEntry:
+    def __init__(self, raw_content: str, type: str, formatted_content: str = ""):
+        self.raw_content = raw_content
+        self.type = type
+        self.formatted_content = formatted_content
+
+class SanctuaryManager:
+    def __init__(self):
+        self.mapping: Dict[str, SanctuaryEntry] = {}
+        self.processed_ids: Set[int] = set()
+
+    def _generate_uuid(self, content: str, prefix: str) -> str:
+        h = hashlib.md5(content.encode()).hexdigest()[:8]
+        return f"__ACE_{prefix}_{h}__"
+
+    def _mark_processed(self, tag: Tag):
+        """Marque un tag et tous ses descendants comme traités."""
+        self.processed_ids.add(id(tag))
+        for descendant in tag.descendants:
+            self.processed_ids.add(id(descendant))
+
+    def extract(self, soup: BeautifulSoup) -> Dict[str, SanctuaryEntry]:
+        """Extrait les blocs complexes et les remplace par des UUID."""
+        self.processed_ids.clear()
+        
+        # 1. Extraction du CODE (pre)
+        for pre in soup.find_all('pre'):
+            if id(pre) in self.processed_ids: continue
+            
+            code_tag = pre.find('code')
+            raw_content = code_tag.get_text() if code_tag else pre.get_text()
+            uuid_key = self._generate_uuid(raw_content, "CODE")
+            
+            lang = ""
+            if code_tag and code_tag.get('class'):
+                for c in code_tag.get('class'):
+                    if c.startswith('language-'):
+                        lang = c.replace('language-', '')
+                        break
+            
+            formatted = f"``` {lang}\n{raw_content}\n```"
+            self.mapping[uuid_key] = SanctuaryEntry(raw_content, "code", formatted)
+            
+            self._mark_processed(pre)
+            pre.clear()
+            pre.append(NavigableString(uuid_key))
+
+        # 2. Extraction MERMAID
+        for tag in soup.find_all(['div', 'p']):
+            if id(tag) in self.processed_ids: continue
+                
+            text = tag.get_text()
+            if MERMAID_DETECTION_RE.search(text):
+                raw_mermaid = re.sub(r'^(?:}}%%|%%{.*?\}%%)', '', text).strip()
+                uuid_key = self._generate_uuid(raw_mermaid, "MERM")
+                formatted = f"```mermaid\n{raw_mermaid}\n```"
+                self.mapping[uuid_key] = SanctuaryEntry(raw_mermaid, "mermaid", formatted)
+                
+                self._mark_processed(tag)
+                tag.clear()
+                tag.append(NavigableString(uuid_key))
+
+        # 3. Extraction MATH (LaTeX/KaTeX)
+        for annot in soup.find_all('annotation', encoding="application/x-tex"):
+            if id(annot) in self.processed_ids: continue
+            
+            raw_math = annot.get_text().strip()
+            uuid_key = self._generate_uuid(raw_math, "MATH")
+            
+            parent_math = annot.find_parent('math')
+            is_block = (parent_math and parent_math.get('display') == 'block')
+            
+            formatted = f"$$\n{raw_math}\n$$" if is_block else f"${raw_math}$"
+            self.mapping[uuid_key] = SanctuaryEntry(raw_math, "math", formatted)
+            
+            target = annot.find_parent(class_="katex") or parent_math or annot
+            self._mark_processed(target)
+            target.clear()
+            target.append(NavigableString(uuid_key))
+
+        return self.mapping
+
+    def restore(self, text: str, mapping: Dict[str, SanctuaryEntry]) -> str:
+        """Réinjecte les contenus protégés."""
+        restored_text = text
+        for uuid_key, entry in mapping.items():
+            restored_text = restored_text.replace(uuid_key, entry.formatted_content)
+        return restored_text
+</file>
+
+<file path="ace/engine/__init__.py">
+
+</file>
+
+<file path="ace/engine/converter.py">
+from bs4 import Tag, NavigableString
+from ace.processors.tables import convert_table
+import re
+
+class MarkdownDispatcher:
+    def __init__(self):
+        self.handlers = {
+            'p': self._handle_p,
+            'h1': self._handle_header,
+            'h2': self._handle_header,
+            'h3': self._handle_header,
+            'h4': self._handle_header,
+            'h5': self._handle_header,
+            'h6': self._handle_header,
+            'ul': self._handle_list,
+            'ol': self._handle_list,
+            'li': self._handle_li,
+            'br': self._handle_br,
+            'hr': self._handle_hr,
+            'table': self._handle_table,
+            'strong': self._handle_inline,
+            'b': self._handle_inline,
+            'em': self._handle_inline,
+            'i': self._handle_inline,
+            'code': self._handle_code_inline,
+        }
+
+    def convert(self, tag: Tag) -> str:
+        """Point d'entrée de la conversion récursive."""
+        if isinstance(tag, NavigableString):
+            return str(tag)
+            
+        # Règle Prioritaire : Si le tag a été remplacé par un UUID du Sanctuaire
+        # BS4 renvoie le NavigableString de l'UUID. 
+        # Si on est ici, c'est un Tag.
+        
+        # On vérifie si le tag contient uniquement un UUID (cas rare après replacement)
+        text = tag.get_text(strip=True)
+        if re.match(r'^__ACE_[A-Z]+_[a-f0-9]{8}__$', text):
+            return text
+
+        handler = self.handlers.get(tag.name, self._handle_generic)
+        return handler(tag)
+
+    def _handle_generic(self, tag: Tag) -> str:
+        """Gère les tags inconnus en explorant récursivement leurs enfants."""
+        content = ""
+        for child in tag.children:
+            if isinstance(child, NavigableString):
+                content += str(child)
+            else:
+                content += self.convert(child)
+        return content
+
+    def _handle_p(self, tag: Tag) -> str:
+        return f"\n{self._handle_generic(tag)}\n"
+
+    def _handle_header(self, tag: Tag) -> str:
+        level = int(tag.name[1])
+        return f"\n{'#' * level} {self._handle_generic(tag)}\n"
+
+    def _handle_list(self, tag: Tag) -> str:
+        return f"\n{self._handle_generic(tag)}\n"
+
+    def _handle_li(self, tag: Tag) -> str:
+        prefix = "- "
+        if tag.parent and tag.parent.name == 'ol':
+            # Optionnel: gérer les index
+            prefix = "1. "
+        return f"{prefix}{self._handle_generic(tag)}\n"
+
+    def _handle_br(self, tag: Tag) -> str:
+        return "  \n"
+
+    def _handle_hr(self, tag: Tag) -> str:
+        return "\n---\n"
+
+    def _handle_table(self, tag: Tag) -> str:
+        return convert_table(tag)
+
+    def _handle_inline(self, tag: Tag) -> str:
+        sym = "**" if tag.name in ['strong', 'b'] else "*"
+        return f"{sym}{self._handle_generic(tag)}{sym}"
+
+    def _handle_code_inline(self, tag: Tag) -> str:
+        # Ne pas doubler si c'est déjà un UUID injecté
+        content = self._handle_generic(tag)
+        if re.match(r'^__ACE_[A-Z]+_[a-f0-9]{8}__$', content):
+            return content
+        return f"`{content}`"
+</file>
+
+<file path="ace/engine/detector.py">
+from bs4 import BeautifulSoup, Tag
+from typing import List, Dict, Any, Optional
+import re
+from collections import defaultdict
+
+class TopologicalDetector:
+    """
+    Détecteur universel basé sur la topologie du DOM et le clustering structurel.
+    Implémente la spécification V2 pour une détection agnostique aux plateformes.
+    """
+    def __init__(self, min_density: int = 3):
+        self.min_density = min_density
+        self.uuid_pattern = re.compile(r'__ACE_[A-Z]+_[a-f0-9]{8}__')
+
+    def _text_density(self, tag: Tag) -> int:
+        """Calcule le nombre de mots dans le tag."""
+        return len(tag.get_text(strip=True).split())
+
+    def _compute_signature(self, tag: Tag) -> str:
+        """Génère une signature structurelle enrichie et normalisée."""
+        name = tag.name
+        
+        # Classes CSS épurées (sans suffixes dynamiques)
+        classes = tag.get('class', [])
+        if isinstance(classes, str): classes = [classes]
+        normalized_classes = []
+        for c in classes:
+            base = re.sub(r'[_-]?[a-f0-9]{6,}', '', c)
+            base = re.sub(r'[_-]?\d{4,}', '', base)
+            if base: normalized_classes.append(base)
+        class_sig = '+'.join(sorted(normalized_classes))
+        
+        # Enfants directs par type
+        child_counts = {}
+        for child in tag.find_all(recursive=False):
+            child_counts[child.name] = child_counts.get(child.name, 0) + 1
+        children_sig = ','.join(f"{k}:{v}" for k,v in sorted(child_counts.items()))
+        
+        # Attributs sémantiques
+        role = tag.get('role', '')
+        testid = tag.get('data-testid', '')
+        attr_sig = f"r={role};t={testid}" if role or testid else ""
+        
+        return f"{name}[{class_sig}]({children_sig}){attr_sig}"
+
+    def _spacing_regularity_score(self, group: List[Tag]) -> float:
+        """Calcule la régularité de l'espacement des nœuds au sein de leur parent."""
+        if len(group) < 3: return 1.0
+        
+        parent = group[0].parent
+        if not parent: return 0.1
+        
+        all_children = [c for c in parent.children if isinstance(c, Tag)]
+        try:
+            indices = [all_children.index(tag) for tag in group]
+        except ValueError:
+            return 0.1
+            
+        gaps = [indices[i+1] - indices[i] for i in range(len(indices)-1)]
+        if not gaps: return 1.0
+        
+        mean_gap = sum(gaps) / len(gaps)
+        variance = sum((g - mean_gap)**2 for g in gaps) / len(gaps)
+        return 1.0 / (1.0 + variance)
+
+    def _score_cluster(self, cluster: List[Tag]) -> float:
+        """Score composite pour classer les clusters candidats."""
+        n = len(cluster)
+        if n == 0: return 0.0
+        
+        avg_density = sum(self._text_density(t) for t in cluster) / n
+        regularity = self._spacing_regularity_score(cluster)
+        
+        # Signal de richesse de contenu (propres aux conversations LLM)
+        richness = 1.0
+        for t in cluster:
+            if t.find(['pre', 'code', 'table', 'blockquote', 'h1', 'h2', 'h3', 'math']):
+                richness += 0.5
+        richness = min(richness, 3.0) # Cap à 3x
+        
+        # Signal UUID ACE (Preservation du Sanctuaire)
+        uuid_bonus = 1.5 if any(self.uuid_pattern.search(t.get_text()) for t in cluster) else 1.0
+            
+        # Pénalité pour les patterns UI (Bannières, Modales, Pieds de page)
+        ui_penalty = 1.0
+        for t in cluster:
+            # Recherche d'attributs suspects
+            parent_attrs = str(t.parent.attrs).lower() if t.parent else ""
+            self_attrs = str(t.attrs).lower() if t.attrs else ""
+            if any(kw in self_attrs or kw in parent_attrs for kw in ['cookie', 'banner', 'dialog', 'modal', 'footer', 'nav', 'menu']):
+                ui_penalty *= 0.5
+                break # Une seule pénalité suffit
+        
+        # Score final : on favorise n > 1
+        n_factor = n if n > 1 else 0.5
+        
+        return n_factor * avg_density * regularity * richness * uuid_bonus * ui_penalty
+
+    def _are_signatures_compatible(self, sig1: str, sig2: str) -> bool:
+        """Détermine si deux signatures sont assez proches pour appartenir au même cluster."""
+        if sig1 == sig2: return True
+        
+        parts_re = re.compile(r'^(\w+)\[(.*?)\]\((.*?)\)(.*)$')
+        m1 = parts_re.match(sig1)
+        m2 = parts_re.match(sig2)
+        
+        if m1 and m2:
+            # Même tag requis
+            if m1.group(1) == m2.group(1):
+                # Si même structure d'enfants, on vérifie un minimum de similarité de classes
+                if m1.group(3) == m2.group(3):
+                    c1 = set(m1.group(2).split('+')) if m1.group(2) else set()
+                    c2 = set(m2.group(2).split('+')) if m2.group(2) else set()
+                    # Si l'un a des classes et l'autre non, ou si classes totalement différentes : méfiance
+                    if c1 and c2 and not (c1 & c2):
+                        return False
+                    return True
+        return False
+
+    def detect(self, soup: BeautifulSoup) -> List[Tag]:
+        """Détecte les blocs de message via clustering topologique et analyse de flux."""
+        # 0. Nettoyage : Exclure les éléments UI évidents (Bannières, Dialogues)
+        for noise in soup.find_all(attrs={"role": ["dialog", "banner", "navigation"]}):
+            noise.decompose()
+        # On ne décompose pas tout le body, juste les overlays probables
+        for noise in soup.find_all(class_=re.compile(r'cookie|modal|overlay|popup', re.I)):
+            if noise.name != 'body':
+                noise.decompose()
+
+        # 1. Identifier tous les candidats par densité (Tous les tags sont permis si denses)
+        candidates = []
+        for tag in soup.find_all(True): # True pour tous les tags
+            if tag.name in ['html', 'body', 'script', 'style', 'head']: continue
+            if self._text_density(tag) >= self.min_density or self.uuid_pattern.search(tag.get_text()):
+                candidates.append(tag)
+        
+        if not candidates: return []
+        
+        # 2. Clustering par signature et parent (Gestion des "Box" chats)
+        clusters = []
+        for cand in candidates:
+            added = False
+            sig = self._compute_signature(cand)
+            for cluster in clusters:
+                if cluster[0].parent == cand.parent and self._are_signatures_compatible(self._compute_signature(cluster[0]), sig):
+                    cluster.append(cand)
+                    added = True
+                    break
+            if not added:
+                clusters.append([cand])
+        
+        # 2b. AJOUT : Gestion des "Stream" chats (Grok)
+        # Si un parent contient des <hr> séparant des candidats, c'est un signal très fort
+        for parent in set(c.parent for c in candidates if c.parent):
+            hr_count = len(parent.find_all('hr', recursive=False))
+            if hr_count >= 1:
+                # On regroupe les enfants significatifs du parent comme un cluster
+                stream_cluster = [c for c in parent.find_all(recursive=False) if (c in candidates or c.name in ['h3', 'blockquote'])]
+                if len(stream_cluster) > 2:
+                    clusters.append(stream_cluster)
+
+        if not clusters: return []
+        
+        # 3. Élimination des clusters redondants
+        final_clusters = []
+        for c1 in clusters:
+            is_redundant = False
+            for c2 in clusters:
+                if c1 is c2: continue
+                # Si c1 est contenu dans c2
+                if all(any(node is ancestor or node in getattr(ancestor, 'descendants', []) for ancestor in c2) for node in c1):
+                    # RÈGLE DE GRANULARITÉ : 
+                    # Si c1 (le contenu plus profond) a autant ou plus d'éléments (n) que c2
+                    # ET que c1 n'est pas juste un wrapper unique
+                    if len(c1) >= len(c2) and len(c1) > 1:
+                        # On garde la granularité
+                        continue
+                    else:
+                        if self._score_cluster(c2) >= self._score_cluster(c1):
+                            is_redundant = True
+                            break
+            if not is_redundant:
+                final_clusters.append(c1)
+        
+        if not final_clusters: return []
+        
+        # 4. Sélection du meilleur cluster
+        best_cluster = max(final_clusters, key=self._score_cluster)
+        
+        # 5. Ordonnancement chronologique
+        return sorted(best_cluster, key=lambda t: t.sourceline or 0)
+</file>
+
+<file path="ace/engine/inferencer.py">
+from bs4 import Tag
+from typing import List, Tuple, Optional, Any
+from ace.models.chat import Role
+import re
+
+class RoleInferrer:
+    def __init__(self):
+        self.user_signals = ['user', 'human', 'you', 'vous']
+        self.model_signals = ['assistant', 'model', 'chatgpt', 'deepseek', 'ai', 'thought', 'assistant-message']
+
+    def infer(self, tag: Tag, context: List[Any] = []) -> Tuple[Role, float]:
+        """
+        Déduit le rôle d'un message.
+        Retourne (Role, confidence).
+        """
+        user_score = 0.0
+        model_score = 0.0
+        
+        # 1. Analyse des classes CSS
+        classes = tag.get('class', [])
+        if isinstance(classes, str): classes = [classes]
+        class_str = " ".join(classes).lower()
+        
+        for sig in self.user_signals:
+            if sig in class_str: user_score += 5.0
+            
+        for sig in self.model_signals:
+            # 'thought' est un signal très fort pour MODEL
+            if sig == 'thought' and sig in class_str: model_score += 8.0
+            elif sig in class_str: model_score += 5.0
+            
+        # 2. Analyse du contenu (Signaux secondaires)
+        # Présence de code ou LaTeX -> souvent MODEL
+        if tag.find(['pre', 'code', 'annotation', 'math']):
+            model_score += 2.0
+            
+        # 3. Arbitrage et Fallback par alternance
+        if user_score > model_score:
+            return Role.USER, 0.8
+        elif model_score > user_score:
+            return Role.MODEL, 0.8
+        else:
+            # Égalité ou absence de signal -> Alternance par rapport au contexte
+            if context:
+                last_role = context[-1].role
+                if last_role == Role.USER:
+                    return Role.MODEL, 0.5
+                else:
+                    return Role.USER, 0.5
+            else:
+                # Premier message du chat -> Souvent User
+                return Role.USER, 0.4
+</file>
+
+<file path="ace/models/__init__.py">
+
+</file>
+
+<file path="ace/models/chat.py">
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Dict, Any, Optional
+from datetime import datetime
+import uuid
+
+class Role(Enum):
+    USER = "user"
+    MODEL = "model"
+    SYSTEM = "system"
+
+class ContentType(Enum):
+    TEXT = "text"
+    CODE = "code"
+    MATH_INLINE = "math_inline"
+    MATH_BLOCK = "math_block"
+    MERMAID = "mermaid"
+    TABLE = "table"
+    IMAGE = "image"
+
+@dataclass
+class MessagePart:
+    type: ContentType
+    content: str
+    language: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class Turn:
+    index: int
+    role: Role
+    content: List[MessagePart]
+    confidence: float
+    timestamp: Optional[datetime] = None
+    raw_html: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class ChatSession:
+    id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    source: Optional[str] = None
+    title: Optional[str] = None
+    created_at: Optional[datetime] = field(default_factory=datetime.now)
+    turns: List[Turn] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class ExtractionOptions:
+    detector: str = "topo"  # topo, heuristic, flux
+    format: str = "md"      # md, json, yaml
+    frontmatter: bool = False
+    debug: bool = False
+    quiet: bool = False
+    raw: bool = False
+    no_table: bool = False
+
+@dataclass
+class ExtractionResult:
+    content: str
+    format: str
+    session: ChatSession
+    debug_data: Dict[str, Any] = field(default_factory=dict)
+</file>
+
+<file path="ace/processors/tables.py">
+from bs4 import Tag
+
+def convert_table(table_tag: Tag) -> str:
+    """Convertit un tag table BS4 en Markdown GFM."""
+    rows = table_tag.find_all('tr')
+    if not rows:
+        return ""
+
+    md_rows = []
+    
+    # Extraction de l'entête
+    header_row = rows[0]
+    headers = [cell.get_text(strip=True) for cell in header_row.find_all(['th', 'td'])]
+    
+    md_rows.append("| " + " | ".join(headers) + " |")
+    md_rows.append("| " + " | ".join(["---"] * len(headers)) + " |")
+    
+    # Données (en sautant l'entête)
+    for row in rows[1:]:
+        cells = [cell.get_text(strip=True) for cell in row.find_all(['td', 'th'])]
+        # Ajuster si le nombre de cellules diffère
+        if len(cells) < len(headers):
+            cells += [""] * (len(headers) - len(cells))
+        md_rows.append("| " + " | ".join(cells[:len(headers)]) + " |")
+        
+    return "\n" + "\n".join(md_rows) + "\n"
+</file>
+
+<file path="ace/utils/__init__.py">
+
+</file>
+
+<file path="ace/utils/dom.py">
+from bs4 import Tag, NavigableString
+import re
+
+def get_clean_text(tag: Tag) -> str:
+    """Extrait le texte d'un tag en le nettoyant des espaces superflus."""
+    return tag.get_text(separator=" ", strip=True)
+
+def is_ui_element(tag: Tag) -> bool:
+    """Détermine si un tag est probablement un élément d'interface (bouton, menu, etc.)."""
+    ui_keywords = ["button", "nav", "footer", "header", "menu", "tooltip", "copy"]
+    classes = tag.get("class", [])
+    if isinstance(classes, str): classes = [classes]
+    
+    # Vérification par classe
+    for cls in classes:
+        if any(kw in cls.lower() for kw in ui_keywords):
+            return True
+            
+    # Vérification par nom de tag
+    if tag.name in ["button", "nav", "footer", "header"]:
+        return True
+        
+    return False
+
+def is_empty_node(tag: Tag) -> bool:
+    """Vérifie si un nœud est vide ou ne contient que des espaces."""
+    return not tag.get_text(strip=True)
+</file>
+
+<file path="ace/utils/regex.py">
+import re
+
+# Labels UI à supprimer (insensible à la casse)
+UI_LABELS_PATTERN = re.compile(
+    r'^(vous avez dit\s*:?|chatgpt a dit\s*:?|gemini a dit\s*:?|claude a dit\s*:?|'
+    r'assistant\s*:?|user\s*:?|human\s*:?|ai\s*:?|model\s*:?|'
+    r'réflexion durant.*?secondes?\s*\.?|thinking\s*\.*)$',
+    re.IGNORECASE | re.MULTILINE
+)
+
+# Pattern de détection Mermaid
+MERMAID_KEYWORDS = [
+    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
+    'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitGraph', 
+    'journey', 'C4Context', 'mindmap', 'timeline'
+]
+
+MERMAID_DETECTION_RE = re.compile(
+    r'(?:^|\n)(?:}}%%|%%{.*?\}%%)?\s*(' + '|'.join(MERMAID_KEYWORDS) + r')\b',
+    re.MULTILINE | re.IGNORECASE
+)
+
+# Delimiteurs LaTeX (KaTeX / MathJax)
+LATEX_INLINE_RE = re.compile(r'\\\\\((.*?)\\\\\)|\\\((.*?)\\\)')
+LATEX_BLOCK_RE = re.compile(r'\\\[(.*?)\\\]', re.DOTALL)
+</file>
+
+<file path="ace/__init__.py">
+
+</file>
+
+<file path="ace/main.py">
+import json
+import yaml
+from datetime import datetime
+from bs4 import BeautifulSoup
+from typing import List, Dict, Any, Optional
+from ace.core.sanctuary import SanctuaryManager
+from ace.engine.detector import TopologicalDetector
+from ace.engine.inferencer import RoleInferrer
+from ace.engine.converter import MarkdownDispatcher
+from ace.models.chat import Role, Turn, ChatSession, MessagePart, ContentType, ExtractionOptions, ExtractionResult
+
+def process_html(html_content: str, options: Optional[ExtractionOptions] = None) -> ExtractionResult:
+    """Orchestre le pipeline complet d'extraction et de conversion."""
+    if options is None:
+        options = ExtractionOptions()
+        
+    soup = BeautifulSoup(html_content, 'html.parser')
+    debug_data = {}
+    
+    # 1. Sanctuaire (Extraction & Protection)
+    sanctuary = SanctuaryManager()
+    mapping = {}
+    if not options.raw:
+        mapping = sanctuary.extract(soup)
+        if options.debug:
+            debug_data['sanctuary_map'] = {k: v.__dict__ for k, v in sanctuary.mapping.items()}
+    
+    # 2. Détection des tours
+    if options.detector == 'topo' or options.detector == 'topological':
+        detector = TopologicalDetector()
+    else:
+        # Fallback pour le moment vers topo si non implémenté
+        detector = TopologicalDetector()
+        
+    blocks = detector.detect(soup)
+    if options.debug:
+        # Note: TopologicalDetector.detect doesn't expose internal clusters yet
+        # For now, we only log the final blocks
+        debug_data['detected_blocks_count'] = len(blocks)
+    
+    # 3. Traitement des tours
+    inferrer = RoleInferrer()
+    dispatcher = MarkdownDispatcher()
+    
+    session = ChatSession()
+    session.turns = []
+    
+    for i, block in enumerate(blocks):
+        # Inférence du rôle
+        role, confidence = inferrer.infer(block, context=session.turns)
+        
+        # Conversion Markdown (les UUID sont préservés)
+        md_content = dispatcher.convert(block)
+        
+        # Création du tour
+        part = MessagePart(type=ContentType.TEXT, content=md_content)
+        turn = Turn(index=i, role=role, content=[part], confidence=confidence)
+        session.turns.append(turn)
+        
+    # 4. Génération du résultat selon le format
+    content = ""
+    if options.format == 'json':
+        # Sérialisation personnalisée pour éviter les problèmes d'objets complexes
+        data = {
+            "session": {
+                "id": session.id,
+                "turns": [
+                    {
+                        "index": t.index,
+                        "role": t.role.value,
+                        "confidence": t.confidence,
+                        "content": [{"type": p.type.value, "content": p.content} for p in t.content]
+                    } for t in session.turns
+                ]
+            }
+        }
+        content = json.dumps(data, indent=2, ensure_ascii=False)
+    elif options.format == 'yaml':
+        data = {
+            "session": {
+                "id": session.id,
+                "turns": [
+                    {
+                        "index": t.index,
+                        "role": t.role.value,
+                        "content": [{"type": p.type.value, "content": p.content} for p in t.content]
+                    } for t in session.turns
+                ]
+            }
+        }
+        content = yaml.dump(data, allow_unicode=True, sort_keys=False)
+    else:
+        # Markdown par défaut
+        full_md = ""
+        if options.frontmatter:
+            full_md += "---\n"
+            full_md += f"title: {session.title or 'ACE Extraction'}\n"
+            full_md += f"date: {datetime.now().isoformat()}\n"
+            full_md += "---\n\n"
+            
+        for turn in session.turns:
+            role_label = "User" if turn.role == Role.USER else "MODEL"
+            full_md += f"## {role_label}\n\n"
+            for part in turn.content:
+                full_md += part.content + "\n"
+            full_md += "\n---\n\n"
+            
+        # 5. Restauration des UUID
+        if not options.raw:
+            final_md = sanctuary.restore(full_md, mapping)
+        else:
+            final_md = full_md
+            
+        # Nettoyage final
+        content = final_md.replace('\n\n\n', '\n\n')
+    
+    return ExtractionResult(content=content, format=options.format, session=session, debug_data=debug_data)
+</file>
+
+<file path="tests/fixtures/complex_ai_studio_sample.html">
+<!-- Extrait simplifié d'un export AI Studio avec wrappers multiples -->
+<ms-chat-turn>
+    <ms-chat-message role="user">
+        <div class="message-content">
+            <p>Première question</p>
+            <p>Deuxième ligne</p>
+        </div>
+    </ms-chat-message>
+</ms-chat-turn>
+<ms-chat-turn>
+    <ms-chat-message role="model">
+        <div class="message-content">
+            <p>Réponse avec plusieurs paragraphes</p>
+            <p>Et encore du texte</p>
+        </div>
+    </ms-chat-message>
+</ms-chat-turn>
+</file>
+
+<file path="tests/fixtures/deepseek_latex_sample.html">
+<div class="ds-message">
+    <p>L'équation est <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">E = mc^2</annotation></semantics></math></span></span>.</p>
+</div>
+</file>
+
+<file path="tests/fixtures/generic_chat_sample.html">
+<div class="chat">
+    <div class="message user">
+        <div class="content">Bonjour, peux-tu m'aider ?</div>
+    </div>
+    <div class="message assistant">
+        <div class="content">Bien sûr, que voulez-vous savoir ?</div>
+    </div>
+</div>
+</file>
+
+<file path="tests/fixtures/grok_mermaid_sample.html">
+<div class="message">
+    <div class="markdown">
+        <p>}}%% graph TD<br>    A[Start] --> B{Decision}<br>    B -->|Yes| C[OK]<br>    B -->|No| D[KO]</p>
+    </div>
+</div>
+</file>
+
+<file path="tests/__init__.py">
+# tests/__init__.py
+</file>
+
+<file path="tests/conftest.py">
+# tests/conftest.py
+import pytest
+from pathlib import Path
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+@pytest.fixture
+def grok_mermaid_html():
+    """Fragment HTML contenant un diagramme Mermaid avec préfixe }}%% (style Grok)."""
+    return (FIXTURES_DIR / "grok_mermaid_sample.html").read_text(encoding="utf-8")
+
+@pytest.fixture
+def deepseek_latex_html():
+    """Fragment HTML contenant du KaTeX/LaTeX (style DeepSeek)."""
+    return (FIXTURES_DIR / "deepseek_latex_sample.html").read_text(encoding="utf-8")
+
+@pytest.fixture
+def generic_chat_html():
+    """Structure de chat simple avec deux messages (User/Assistant)."""
+    return (FIXTURES_DIR / "generic_chat_sample.html").read_text(encoding="utf-8")
+
+@pytest.fixture
+def ai_studio_complex_html():
+    """Export AI Studio avec conteneurs complexes (multi-paragraphes)."""
+    return (FIXTURES_DIR / "complex_ai_studio_sample.html").read_text(encoding="utf-8")
+</file>
+
+<file path="tests/test_atom_00.py">
+# tests/test_atom_00.py
+import pytest
+
+def test_import_models():
+    """Vérifie que les modèles de données sont importables sans erreur."""
+    try:
+        from ace.models.chat import Role, ContentType, MessagePart, Turn, ChatSession
+    except ImportError as e:
+        pytest.fail(f"Import failed: {e}")
+
+def test_role_enum():
+    from ace.models.chat import Role
+    assert Role.USER.value == "user"
+    assert Role.MODEL.value == "model"
+    assert Role.SYSTEM.value == "system"
+
+def test_create_turn():
+    from ace.models.chat import Turn, Role
+    turn = Turn(index=0, role=Role.USER, content=[], confidence=0.9)
+    assert turn.index == 0
+    assert turn.role == Role.USER
+</file>
+
+<file path="tests/test_atom_01a.py">
+# tests/test_atom_01a.py
+import re
+from bs4 import BeautifulSoup
+from ace.core.sanctuary import SanctuaryManager
+
+def test_extract_code_basic():
+    html = """
+    <div>
+        <pre><code>print("Hello, world!")</code></pre>
+    </div>
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    manager = SanctuaryManager()
+    mapping = manager.extract(soup)
+
+    # Vérifier qu'un UUID a été généré
+    assert len(mapping) == 1
+    uuid_placeholder = list(mapping.keys())[0]
+    assert re.match(r'__ACE_CODE_[a-f0-9]{8}__', uuid_placeholder)
+
+    # Vérifier que le contenu extrait est le code Python
+    entry = mapping[uuid_placeholder]
+    assert 'print("Hello, world!")' in entry.raw_content
+
+    # Vérifier que le placeholder est dans le DOM
+    assert uuid_placeholder in str(soup)
+
+def test_restore_code():
+    markdown_text = "Voici le code :\n__ACE_CODE_12345678__\nFin."
+    mapping = {
+        "__ACE_CODE_12345678__": type('Entry', (), {'formatted_content': '```python\nprint("Hello")\n```'})()
+    }
+    manager = SanctuaryManager()
+    restored = manager.restore(markdown_text, mapping)
+    assert "```python" in restored
+    assert "print(\"Hello\")" in restored
+    assert "__ACE_CODE_" not in restored
+</file>
+
+<file path="tests/test_atom_01b.py">
+# tests/test_atom_01b.py
+import re
+from bs4 import BeautifulSoup
+from ace.core.sanctuary import SanctuaryManager
+
+def test_extract_mermaid_grok(grok_mermaid_html):
+    """Teste l'extraction d'un diagramme Mermaid avec préfixe }}%% (export Grok)."""
+    soup = BeautifulSoup(grok_mermaid_html, 'html.parser')
+    manager = SanctuaryManager()
+    mapping = manager.extract(soup)
+
+    # Au moins une entrée Mermaid doit être trouvée
+    mermaid_uuids = [uid for uid, entry in mapping.items() if entry.type == "mermaid"]
+    assert len(mermaid_uuids) == 1, "Aucun diagramme Mermaid extrait"
+
+    entry = mapping[mermaid_uuids[0]]
+    # Vérifier que le contenu commence par un mot-clé Mermaid (après nettoyage)
+    cleaned = re.sub(r'^(}}%%|%%{.*?}%%)', '', entry.raw_content).strip()
+    assert cleaned.startswith(('graph', 'flowchart', 'sequenceDiagram')), \
+        f"Contenu extrait: {entry.raw_content[:100]}"
+
+def test_extract_latex_deepseek(deepseek_latex_html):
+    """Teste l'extraction de LaTeX (KaTeX) dans un export DeepSeek."""
+    soup = BeautifulSoup(deepseek_latex_html, 'html.parser')
+    manager = SanctuaryManager()
+    mapping = manager.extract(soup)
+
+    math_uuids = [uid for uid, entry in mapping.items() if entry.type == "math"]
+    assert len(math_uuids) >= 1, "Aucune formule mathématique extraite"
+
+    # Vérifier que le contenu contient des délimiteurs LaTeX
+    entry = mapping[math_uuids[0]]
+    assert '$' in entry.formatted_content or '\\(' in entry.raw_content
+
+def test_restore_mermaid():
+    markdown = "Avant\n__ACE_MERM_abcdef12__\nAprès"
+    mapping = {
+        "__ACE_MERM_abcdef12__": type('Entry', (), {
+            'type': 'mermaid',
+            'formatted_content': '```mermaid\ngraph TD\nA-->B\n```'
+        })()
+    }
+    manager = SanctuaryManager()
+    restored = manager.restore(markdown, mapping)
+    assert "```mermaid" in restored
+    assert "graph TD" in restored
+</file>
+
+<file path="tests/test_atom_02.py">
+# tests/test_atom_02.py
+from bs4 import BeautifulSoup
+from ace.engine.detector import TopologicalDetector
+
+def test_detect_turns_generic(generic_chat_html):
+    """Vérifie que les conteneurs de messages sont correctement identifiés."""
+    soup = BeautifulSoup(generic_chat_html, 'html.parser')
+    detector = TopologicalDetector()
+    blocks = detector.detect(soup)
+
+    # La fixture contient 2 messages (User + Assistant)
+    assert len(blocks) == 2, f"Expected 2 turns, got {len(blocks)}"
+
+def test_detect_turns_ai_studio_complex(ai_studio_complex_html):
+    """Teste sur un export AI Studio avec de nombreux wrappers."""
+    soup = BeautifulSoup(ai_studio_complex_html, 'html.parser')
+    detector = TopologicalDetector()
+    blocks = detector.detect(soup)
+
+    # On attend au moins 2 tours
+    assert len(blocks) >= 2, "Pas assez de tours détectés dans l'export complexe"
+
+    # Vérification basique : chaque bloc doit contenir du texte
+    for block in blocks:
+        assert len(block.get_text(strip=True)) > 5, "Bloc détecté presque vide"
+
+def test_structural_clustering():
+    """Vérifie que le clustering regroupe les éléments de même signature."""
+    html = """
+    <div id="parent">
+        <div class="msg">Hello</div>
+        <div class="msg">Hi there</div>
+        <div class="other">Sidebar</div>
+    </div>
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    detector = TopologicalDetector(min_density=1)
+    # On force la détection
+    blocks = detector.detect(soup)
+    # Devrait regrouper les deux 'msg' car ils ont la même signature
+    assert len(blocks) == 2
+    assert all('msg' in str(b) for b in blocks)
+</file>
+
+<file path="tests/test_atom_03.py">
+# tests/test_atom_03.py
+from bs4 import BeautifulSoup
+from ace.engine.inferencer import RoleInferrer
+from ace.models.chat import Role
+
+def test_infer_user_role():
+    html = '<div class="user-message">Bonjour, comment ça va ?</div>'
+    soup = BeautifulSoup(html, 'html.parser')
+    tag = soup.find('div')
+    inferrer = RoleInferrer()
+    role, conf = inferrer.infer(tag, context=[])
+    assert role == Role.USER
+    assert conf > 0.5
+
+def test_infer_model_role_with_code():
+    html = '<div class="assistant"><pre><code>print("hello")</code></pre></div>'
+    soup = BeautifulSoup(html, 'html.parser')
+    tag = soup.find('div')
+    inferrer = RoleInferrer()
+    role, _ = inferrer.infer(tag, context=[])
+    # La présence de code favorise fortement MODEL
+    assert role == Role.MODEL
+
+def test_alternance_fallback():
+    """Si aucun signal fort, doit alterner par rapport au tour précédent."""
+    inferrer = RoleInferrer()
+    context = [type('Turn', (), {'role': Role.USER})()]
+    html = '<div>Réponse neutre</div>'
+    tag = BeautifulSoup(html, 'html.parser').find('div')
+    role, _ = inferrer.infer(tag, context)
+    assert role == Role.MODEL
+</file>
+
+<file path="tests/test_atom_04.py">
+# tests/test_atom_04.py
+from bs4 import BeautifulSoup
+from ace.engine.converter import MarkdownDispatcher
+
+def test_convert_paragraph():
+    html = "<p>Un simple paragraphe.</p>"
+    soup = BeautifulSoup(html, 'html.parser')
+    dispatcher = MarkdownDispatcher()
+    md = dispatcher.convert(soup.find('p'))
+    assert md.strip() == "Un simple paragraphe."
+
+def test_convert_table():
+    html = """
+    <table>
+        <tr><th>A</th><th>B</th></tr>
+        <tr><td>1</td><td>2</td></tr>
+    </table>
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    dispatcher = MarkdownDispatcher()
+    md = dispatcher.convert(soup.find('table'))
+    assert "| A | B |" in md
+    assert "| 1 | 2 |" in md
+
+def test_preserve_sanctuary_uuids():
+    """Les placeholders UUID ne doivent pas être modifiés."""
+    html = "<p>Texte avec __ACE_CODE_12345678__ intégré.</p>"
+    soup = BeautifulSoup(html, 'html.parser')
+    dispatcher = MarkdownDispatcher()
+    md = dispatcher.convert(soup.find('p'))
+    assert "__ACE_CODE_12345678__" in md
+</file>
+
+<file path="tests/test_atom_05.py">
+# tests/test_atom_05.py
+from ace.main import process_html
+from ace.models.chat import ChatSession
+
+def test_end_to_end_generic(generic_chat_html):
+    """Test complet de l'extraction jusqu'au Markdown."""
+    result = process_html(generic_chat_html)  # Retourne une ChatSession ou un str Markdown ?
+    # Selon l'implémentation, process_html peut retourner le Markdown final
+    # Adaptez selon votre interface.
+    assert "## User" in result or "## MODEL" in result
+    assert "Bonjour" in result
+
+def test_end_to_end_preserves_mermaid(grok_mermaid_html):
+    """Vérifie que le diagramme Mermaid est intact en sortie."""
+    result = process_html(grok_mermaid_html)
+    assert "```mermaid" in result
+    assert "graph TD" in result
+</file>
+
+<file path="pyproject.toml">
+[project]
+name = "ace"
+version = "0.1.0"
+description = "Adaptive Chat Extractor - Une solution universelle pour l'extraction de conversations HTML."
+dependencies = [
+    "beautifulsoup4",
+    "PyYAML",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+ace = "ace.cli:main"
+
+[tool.setuptools]
+packages = ["ace"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+</file>
+
+<file path="README.md">
+# ACE
+</file>
+
+</files>

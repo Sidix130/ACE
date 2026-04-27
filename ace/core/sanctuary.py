@@ -11,6 +11,13 @@ class SanctuaryEntry:
         self.type = type
         self.formatted_content = formatted_content
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "raw_content": self.raw_content,
+            "type": self.type,
+            "formatted_content": self.formatted_content
+        }
+
 class SanctuaryManager:
     def __init__(self):
         self.mapping: Dict[str, SanctuaryEntry] = {}
@@ -55,6 +62,10 @@ class SanctuaryManager:
         # 2. Extraction MERMAID
         for tag in soup.find_all(['div', 'p']):
             if id(tag) in self.processed_ids: continue
+            
+            # Anti-Wrapper: Ne pas traiter les divs structurels comme du Mermaid
+            if tag.name == 'div' and tag.find(['div', 'article', 'section', 'table']):
+                continue
                 
             text = tag.get_text()
             if MERMAID_DETECTION_RE.search(text):
